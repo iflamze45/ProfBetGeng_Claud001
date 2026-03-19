@@ -1,0 +1,30 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Claude Code internals
+.claude/
+
+# Non-PBG folders that drifted in
+Supernova_System/
+icyflamze-creative-os/
+components/
+data/
+lib/
+logs/
+registry/
+reports/
+.agent/
+
+# Env
+.env
+.env.*
+
+# Context (regenerated each session)
+.claude-context.md
+
+# Frontend deps
+frontend/node_modules/
