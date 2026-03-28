@@ -1,5 +1,9 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pathlib import Path
+
+# Resolve .env relative to this file (backend/.env) — works regardless of cwd
+_ENV_FILE = Path(__file__).parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -17,7 +21,11 @@ class Settings(BaseSettings):
     # Anthropic
     anthropic_api_key: str = ""
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": str(_ENV_FILE),
+        "env_file_encoding": "utf-8",
+        "env_ignore_empty": True,   # empty shell vars don't override .env values
+    }
 
 
 @lru_cache()
