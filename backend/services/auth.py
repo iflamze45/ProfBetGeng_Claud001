@@ -23,7 +23,11 @@ class APIKeyServiceProtocol(Protocol):
 
 
 class APIKeyService:
-    """Production API key service backed by Supabase."""
+    """Production API key service backed by Supabase.
+
+    Schema: api_keys(key_id, key_hash, key_prefix, name, is_active,
+                      rate_limit, request_count, created_at, last_used_at)
+    """
 
     def __init__(self, supabase_client):
         self.supabase = supabase_client
@@ -31,28 +35,28 @@ class APIKeyService:
     def generate_key(self, label: str, owner: Optional[str] = None) -> dict:
         raw_key = f"pbg_{secrets.token_urlsafe(32)}"
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        key_prefix = raw_key[:12]           # e.g. "pbg_abc12345"
         created_at = datetime.utcnow().isoformat()
 
         self.supabase.table("api_keys").insert({
             "key_hash": key_hash,
-            "label": label,
-            "owner": owner,
-            "created_at": created_at,
-            "is_active": True
+            "key_prefix": key_prefix,
+            "name": label,                  # schema uses 'name' not 'label'
+            "is_active": True,
         }).execute()
 
         return {
             "key": raw_key,
             "label": label,
             "owner": owner,
-            "created_at": created_at
+            "created_at": created_at,
         }
 
     def validate_key(self, key: str) -> bool:
         key_hash = hashlib.sha256(key.encode()).hexdigest()
         result = self.supabase.table("api_keys").select("is_active").eq(
             "key_hash", key_hash
-        ).single().execute()
+        ).maybe_single().execute()
         return bool(result.data and result.data.get("is_active"))
 
 

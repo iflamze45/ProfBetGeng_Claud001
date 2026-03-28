@@ -16,33 +16,59 @@ class StorageServiceProtocol(Protocol):
 
 
 class SupabaseStorageService:
-    """Production storage backed by Supabase."""
+    """Production storage backed by Supabase.
+
+    Schema: conversions(record_id, api_key_id, source_sportsbook,
+                         target_sportsbook, booking_code, source_ticket_id,
+                         parse_confidence, conversion_confidence,
+                         convertible_count, unconvertible_count,
+                         selection_count, has_splits, is_fully_converted,
+                         raw_parse_result, raw_conversion, pulse_analysis,
+                         created_at)
+    """
 
     def __init__(self, supabase_client):
         self.supabase = supabase_client
 
     def save_conversion(self, record: ConversionRecord) -> Optional[str]:
         result = self.supabase.table("conversions").insert({
-            "api_key": record.api_key,
-            "source_booking_code": record.source_booking_code,
-            "source_platform": record.source_platform,
-            "target_platform": record.target_platform,
-            "selections_count": record.selections_count,
-            "converted_count": record.converted_count,
-            "skipped_count": record.skipped_count,
-            "created_at": record.created_at
+            "api_key_id": record.api_key,
+            "source_sportsbook": record.source_platform,
+            "target_sportsbook": record.target_platform,
+            "booking_code": record.source_booking_code,
+            "source_ticket_id": record.source_booking_code,
+            "selection_count": record.selections_count,
+            "convertible_count": record.converted_count,
+            "unconvertible_count": record.skipped_count,
+            "is_fully_converted": record.skipped_count == 0,
+            "parse_confidence": 1.0,
+            "conversion_confidence": 1.0,
         }).execute()
 
         if result.data:
-            return result.data[0].get("id")
+            return result.data[0].get("record_id")
         return None
 
     def get_conversions(self, api_key: str, limit: int = 50) -> list[ConversionRecord]:
         result = self.supabase.table("conversions").select("*").eq(
-            "api_key", api_key
+            "api_key_id", api_key
         ).order("created_at", desc=True).limit(limit).execute()
 
-        return [ConversionRecord(**row) for row in (result.data or [])]
+        # Map real schema columns back to ConversionRecord fields
+        records = []
+        for row in (result.data or []):
+            records.append(ConversionRecord(
+                api_key=row.get("api_key_id", ""),
+                source_booking_code=row.get("booking_code", ""),
+                source_platform=row.get("source_sportsbook", ""),
+                target_platform=row.get("target_sportsbook", ""),
+                selections_count=row.get("selection_count", 0),
+                converted_count=row.get("convertible_count", 0),
+                skipped_count=row.get("unconvertible_count", 0),
+                created_at=str(row.get("created_at", "")),
+                id=str(row.get("record_id", "")),
+            ))
+        return records
 
 
 class MockStorageService:

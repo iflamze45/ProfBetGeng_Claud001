@@ -10,21 +10,28 @@ from .models import (
 )
 from .services.sportybet_parser import SportybetAdapter
 from .services.converter import Bet9jaConverter
-from .services.auth import MockAPIKeyService, require_api_key
-from .services.storage import MockStorageService
-from .services.ticket_pulse import MockTicketPulseService, RiskReport
+from .services.auth import APIKeyService, MockAPIKeyService, require_api_key
+from .services.storage import SupabaseStorageService, MockStorageService
+from .services.ticket_pulse import TicketPulseService, MockTicketPulseService, RiskReport
+from .services.supabase_client import get_supabase_client
 from .config import get_settings
 
 router = APIRouter()
 
+
 def get_auth_service():
-    return MockAPIKeyService()
+    client = get_supabase_client()
+    return APIKeyService(client) if client else MockAPIKeyService()
+
 
 def get_storage_service():
-    return MockStorageService()
+    client = get_supabase_client()
+    return SupabaseStorageService(client) if client else MockStorageService()
+
 
 def get_pulse_service():
-    return MockTicketPulseService()
+    settings = get_settings()
+    return TicketPulseService() if settings.anthropic_api_key else MockTicketPulseService()
 
 parser = SportybetAdapter()
 converter = Bet9jaConverter()

@@ -59,18 +59,20 @@ def _resolve_market(raw: str) -> tuple[MarketType, float]:
     return MarketType.UNSUPPORTED, 0.0
 
 
+def _format_ah_leg(value: float) -> str:
+    """Format an AH line value keeping exactly one decimal place."""
+    sign = "+" if value >= 0 else ""
+    return f"{sign}{value:.1f}"
+
+
 def _resolve_ah_line(pick: str) -> tuple[str, list[str]]:
     """Splits quarter-ball AH into two standard lines."""
     match = AH_QUARTER_PATTERN.match(pick.strip())
     if not match:
         return pick, []
     value = float(pick)
-    if value > 0:
-        leg1 = f"+{value - 0.25:.2f}".rstrip("0").rstrip(".")
-        leg2 = f"+{value + 0.25:.2f}".rstrip("0").rstrip(".")
-    else:
-        leg1 = f"{value - 0.25:.2f}".rstrip("0").rstrip(".")
-        leg2 = f"{value + 0.25:.2f}".rstrip("0").rstrip(".")
+    leg1 = _format_ah_leg(value - 0.25)
+    leg2 = _format_ah_leg(value + 0.25)
     return pick, [leg1, leg2]
 
 
