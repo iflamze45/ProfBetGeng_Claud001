@@ -31,7 +31,7 @@ class APIKeyService:
     def generate_key(self, label: str, owner: Optional[str] = None) -> dict:
         raw_key = f"pbg_{secrets.token_urlsafe(32)}"
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        created_at = datetime.now(datetime.UTC).isoformat()
+        created_at = datetime.utcnow().isoformat()
 
         self.supabase.table("api_keys").insert({
             "key_hash": key_hash,
@@ -66,7 +66,7 @@ class MockAPIKeyService:
             "key": self.VALID_KEY,
             "label": label,
             "owner": owner,
-            "created_at": datetime.now(datetime.UTC).isoformat()
+            "created_at": datetime.utcnow().isoformat()
         }
 
     def validate_key(self, key: str) -> bool:

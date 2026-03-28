@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Any, Optional
 from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -73,7 +73,7 @@ class UnresolvedSummary(BaseModel):
 
 class ResponseMeta(BaseModel):
     parser_version: str = "1.0.0"
-    processed_at: str = Field(default_factory=lambda: datetime.now(datetime.UTC).isoformat())
+    processed_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     confidence_avg: float = 1.0
 
 
@@ -131,7 +131,7 @@ class ConversionRecord:
     selections_count: int
     converted_count: int
     skipped_count: int
-    created_at: str = field(default_factory=lambda: datetime.now(datetime.UTC).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     id: Optional[str] = None
 
 
@@ -141,9 +141,14 @@ class ConvertRequest(BaseModel):
     booking_code: str
     selections: list[SportybetSelection]
     stake: Optional[float] = None
+    include_analysis: bool = False
+    language: str = "en"
 
 
 class ConvertResponse(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
     success: bool
     converted: Optional[ConvertedTicket] = None
+    analysis: Optional[Any] = None
     error: Optional[str] = None

@@ -4,81 +4,105 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ProfBetGeng (Claud001) is a SportyBet to Bet9ja ticket converter with AI-driven risk analysis. The platform takes betting tickets from SportyBet, converts them to equivalent Bet9ja tickets, and provides AI-powered risk assessment.
-
-## Repository Structure
-
-Monorepo with two top-level directories:
-
-- **`backend/`** — Python API server (framework TBD, scaffold only)
-- **`frontend/`** — React (JSX) web application (build tooling TBD, scaffold only)
-
-## Current State
-
-This project is in initial scaffold phase. All source files are empty placeholders. The following needs to be set up before development can begin:
-
-### Backend (`backend/`)
-- Choose and install Python web framework (FastAPI recommended for async + auto-docs)
-- Set up `requirements.txt` or `pyproject.toml` with dependencies
-- Implement `main.py` (app entry point), `routes.py` (API endpoints), `models.py` (data schemas)
-- Configure `services/` for business logic (ticket conversion, AI risk analysis)
-- Set up `prompts/` with AI prompt templates for risk analysis
-- Add test framework (pytest) in `tests/`
-- Populate `backend/.env` with required environment variables
-
-### Frontend (`frontend/`)
-- Initialize with Vite + React (run `npm create vite@latest` or set up manually)
-- Create `package.json` with scripts and dependencies
-- Build out `src/components/`, `src/pages/`, `src/services/`
-- Set up `index.html` as the Vite entry point
-
-## Architecture
-
-```
-backend/
-├── main.py          # App entry point and server config
-├── routes.py        # API endpoint definitions
-├── models.py        # Data models / schemas
-├── models/          # Extended model definitions
-├── services/        # Business logic (conversion engine, AI analysis)
-├── prompts/         # AI prompt templates for risk analysis
-├── tests/           # Test suite
-└── .env             # Environment variables (not committed)
-
-frontend/
-├── index.html       # HTML entry point
-├── public/          # Static assets
-└── src/
-    ├── App.jsx      # Root React component
-    ├── components/  # Reusable UI components
-    ├── pages/       # Route-level page components
-    └── services/    # API client layer
-```
+ProfBetGeng (PBG) is a SportyBet → Bet9ja ticket converter with AI-driven risk analysis. The core pipeline: parse raw SportyBet selections → normalize to an internal `InternalTicket` → convert to a `ConvertedTicket` for Bet9ja → optionally run `TicketPulse` risk analysis via Claude API.
 
 ## Commands
 
-No build tooling is configured yet. Once set up, expected commands:
+All commands run from the repo root unless noted.
 
-### Backend (Python)
 ```bash
-cd backend
-pip install -r requirements.txt    # Install dependencies
-python main.py                      # Run dev server
-pytest tests/                       # Run all tests
-pytest tests/test_file.py::test_name  # Run single test
+# Run in: Claude Code Terminal
+cd /Users/alexanderanthony/Projects/ProfBetGeng_Claud001
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start backend dev server
+uvicorn backend.main:app --reload --port 8000
+
+# Run all tests
+python -m pytest backend/tests/ -v
+
+# Run a single test file
+python -m pytest backend/tests/test_pbg.py -v
+
+# Run a single test
+python -m pytest backend/tests/test_pbg.py::TestSpotybetParser::test_parse_1x2 -v
+
+# Run tests with asyncio mode
+python -m pytest backend/tests/test_ticket_pulse.py -v --asyncio-mode=auto
 ```
 
-### Frontend (React)
+Frontend (scaffold only):
 ```bash
-cd frontend
-npm install          # Install dependencies
-npm run dev          # Start dev server
-npm run build        # Production build
-npm test             # Run tests
+cd frontend && npm install && npm run dev
 ```
 
-## Key Domain Concepts
+## Architecture
 
-- **Ticket conversion**: Mapping bet selections from SportyBet's format/odds to Bet9ja equivalents
-- **Risk analysis**: AI-powered assessment of converted tickets (confidence, odds comparison, potential discrepancies)
-- **Booking codes**: Both platforms use booking codes that encode bet selections; the converter must parse and re-encode between formats
+### Data Flow
+
+```
+SportybetTicket (raw input)
+  → SportybetAdapter.parse()       → InternalTicket + warnings
+    → Bet9jaConverter.convert()    → ConvertedTicket
+      → TicketPulseService.analyse() → RiskReport (optional, AI-powered)
+```
+
+### Backend Module Map
+
+| File | Role |
+|------|------|
+| `backend/main.py` | FastAPI app factory (`create_app()`), CORS, router mount |
+| `backend/routes.py` | All API endpoints; module-level `parser` and `converter` singletons |
+| `backend/models.py` | All Pydantic schemas and dataclasses — single source of truth for types |
+| `backend/config.py` | `Settings` via `pydantic-settings`, loaded from `backend/.env`, cached with `@lru_cache` |
+| `backend/batch.py` | Batch request/response schemas; batch logic lives in `routes.py` |
+| `backend/services/sportybet_parser.py` | `SportybetAdapter` — market mapping, AH quarter-ball split, confidence scoring |
+| `backend/services/converter.py` | `Bet9jaConverter` — market registry, pick normalization table |
+| `backend/services/ticket_pulse.py` | `TicketPulseService` (Claude API) + `_heuristic_score` fallback; `MockTicketPulseService` for tests |
+| `backend/services/auth.py` | `APIKeyService` (Supabase) + `MockAPIKeyService`; `require_api_key` FastAPI dependency |
+| `backend/services/storage.py` | `SupabaseStorageService` + `MockStorageService` |
+
+### Key Design Patterns
+
+**Protocol + Mock pairs**: Every service has a `Protocol` interface, a production implementation (Supabase/Claude), and a `Mock*` implementation injected during tests. Routes use `Depends()` with getter functions so mocks can be patched.
+
+**Auth flow**: `require_api_key` extracts the `X-API-Key` header. When `auth_enabled=True`, the route then validates via the injected auth service. `dev_bypass` short-circuits validation when `auth_enabled=False`.
+
+**TicketPulse fallback**: `TicketPulseService.analyse()` calls Claude API; on timeout, HTTP error, or JSON parse failure it silently falls back to `_heuristic_score()` and sets `source="heuristic_fallback"`.
+
+**Batch**: `POST /api/v1/convert-batch` runs up to 10 tickets concurrently via `asyncio.gather`. Individual failures are captured per-index; the batch never aborts. Gated by `batch_enabled` flag in settings.
+
+### API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | None | Health check |
+| POST | `/api/v1/convert` | X-API-Key | Single ticket conversion + optional analysis |
+| POST | `/api/v1/analyse` | X-API-Key | Risk analysis of a pre-converted ticket |
+| GET | `/api/v1/history` | X-API-Key | Conversion history for the key |
+| POST | `/api/v1/keys` | None | Generate a new API key |
+| POST | `/api/v1/convert-batch` | X-API-Key | Batch convert up to 10 tickets |
+
+### Environment Variables (`backend/.env`)
+
+```
+AUTH_ENABLED=true
+BATCH_ENABLED=false
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ANTHROPIC_API_KEY=
+```
+
+### Test Structure
+
+Tests use `fastapi.testclient.TestClient`. `conftest.py` patches `sys.path`. The test suite has three import styles — `from ..models import` (relative, used in `test_pbg.py`) and `from backend.models import` (absolute, used in `test_ticket_pulse.py`) — both work because `conftest.py` adds the repo root to `sys.path`.
+
+Batch tests (`test_batch.py`) use `unittest.mock.patch` to mock `get_settings`, `parser`, `converter`, `get_storage_service`, `get_pulse_service`, and `require_api_key` at the `backend.routes` namespace.
+
+### Supabase Tables (production)
+
+- `api_keys`: `key_hash`, `label`, `owner`, `created_at`, `is_active`
+- `conversions`: `api_key`, `source_booking_code`, `source_platform`, `target_platform`, `selections_count`, `converted_count`, `skipped_count`, `created_at`

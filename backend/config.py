@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
     auth_enabled: bool = True
+    batch_enabled: bool = False
 
     # Supabase
     supabase_url: str = ""
