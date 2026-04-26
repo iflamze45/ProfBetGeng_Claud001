@@ -6,7 +6,7 @@ Supports auth_enabled flag for dev bypass.
 import secrets
 import hashlib
 from typing import Optional, Protocol
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
 from ..config import get_settings
@@ -36,7 +36,7 @@ class APIKeyService:
         raw_key = f"pbg_{secrets.token_urlsafe(32)}"
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         key_prefix = raw_key[:12]           # e.g. "pbg_abc12345"
-        created_at = datetime.utcnow().isoformat()
+        created_at = datetime.now(timezone.utc).isoformat()
 
         self.supabase.table("api_keys").insert({
             "key_hash": key_hash,
@@ -70,7 +70,7 @@ class MockAPIKeyService:
             "key": self.VALID_KEY,
             "label": label,
             "owner": owner,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
 
     def validate_key(self, key: str) -> bool:
@@ -81,7 +81,7 @@ def require_api_key(
     api_key: Optional[str] = Security(API_KEY_HEADER),
 ) -> str:
     settings = get_settings()
-    if not settings.auth_enabled:
+    if not settings.auth_enabled and settings.environment != "production":
         return "dev_bypass"
     if not api_key:
         raise HTTPException(status_code=401, detail="API key required")

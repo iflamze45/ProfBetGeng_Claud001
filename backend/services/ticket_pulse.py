@@ -1,10 +1,11 @@
 import json
 import httpx
 from enum import Enum
-from typing import Optional
+from typing import Optional, AsyncGenerator
 from pydantic import BaseModel, Field
 from ..models import ConvertedTicket
 from ..config import get_settings
+
 
 
 class RiskLevel(str, Enum):
@@ -31,7 +32,7 @@ class RiskReport(BaseModel):
 
 def _build_prompt(ticket: ConvertedTicket, language: str) -> str:
     selections_text = "\n".join([
-        f"  - {s.event_name} | {s.market} | Pick: {s.pick} | Odds: {s.odds}"
+        f"  - {json.dumps(s.event_name)} | {json.dumps(s.market)} | Pick: {json.dumps(s.pick)} | Odds: {s.odds}"
         for s in ticket.selections
     ])
     lang_instruction = (
@@ -39,12 +40,15 @@ def _build_prompt(ticket: ConvertedTicket, language: str) -> str:
         if language == "pid"
         else "Respond in clear, concise English."
     )
+    # Using json.dumps to ensure user input is quoted and escaped within the prompt
+    safe_booking_code = json.dumps(ticket.source_booking_code)
+    
     return f"""You are Ticket Pulse — a sharp, no-nonsense sports betting risk analyst for Nigerian bettors.
 
 Analyse this converted betting ticket and return ONLY a JSON object. No preamble, no markdown.
 
 TICKET:
-- Source booking code: {ticket.source_booking_code}
+- Source booking code: {safe_booking_code}
 - Platform: SportyBet → Bet9ja
 - Selections ({ticket.converted_count} converted, {ticket.skipped_count} skipped):
 {selections_text}
@@ -169,7 +173,77 @@ class TicketPulseService:
             report.source = "heuristic_fallback"
             return report
 
+    async def analyse_stream(self, ticket: ConvertedTicket, language: str = "en") -> AsyncGenerator[str, None]:
+        settings = get_settings()
+        if not settings.anthropic_api_key:
+            # Fallback to heuristic, yielded as a single JSON chunk then end
+            report = _heuristic_score(ticket, language)
+            yield f"data: {json.dumps({'text': json.dumps(report.model_dump())})}\n\n"
+            yield "event: end\ndata: {}\n\n"
+            return
+            
+        from .pbg_streaming_protocol import StreamingProtocol
+        protocol = StreamingProtocol(api_key=settings.anthropic_api_key, model=self.MODEL, timeout=self.TIMEOUT)
+        prompt = _build_prompt(ticket, language)
+        async for chunk in protocol.stream_analysis(prompt):
+            yield chunk
+
 
 class MockTicketPulseService:
     async def analyse(self, ticket: ConvertedTicket, language: str = "en") -> RiskReport:
         return _heuristic_score(ticket, language)
+
+    async def analyse_stream(self, ticket: ConvertedTicket, language: str = "en") -> AsyncGenerator[str, None]:
+        report = _heuristic_score(ticket, language)
+        # Yield the entirety of the mock response in a single SSE event
+        yield f"data: {json.dumps({'text': json.dumps(report.model_dump())})}\n\n"
+        yield "event: end\ndata: {}\n\n"
+
+class MatchTelemetry(BaseModel):
+    match_id: str
+    home_score: int = 0
+    away_score: int = 0
+    minute: int = 0
+    win_probability: float = 0.5 
+    momentum_score: float = 0.0 # Positive for home dominance
+    is_var_active: bool = False
+    danger_strikes: int = 0
+
+class MatchPulseIngester:
+    """
+    Phase 16: Sentient Settlement.
+    Handles real-time match events to trigger cash-outs and hedges.
+    """
+    def __init__(self):
+        self.active_telemetry: dict[str, MatchTelemetry] = {}
+
+    def ingest_match_event(self, match_id: str, event_type: str, details: dict):
+        tele = self.active_telemetry.get(match_id, MatchTelemetry(match_id=match_id))
+        
+        if event_type == "GOAL":
+            is_home = details.get("team") == "home"
+            if is_home: tele.home_score += 1
+            else: tele.away_score += 1
+            tele.win_probability = min(0.99, tele.win_probability + 0.3)
+            tele.momentum_score += 5.0 if is_home else -5.0
+            
+        elif event_type == "DANGEROUS_ATTACK":
+            is_home = details.get("team") == "home"
+            tele.momentum_score += 0.5 if is_home else -0.5
+            tele.danger_strikes += 1
+            
+        elif event_type == "VAR":
+            tele.is_var_active = True
+
+        tele.minute = details.get("minute", tele.minute)
+        self.active_telemetry[match_id] = tele
+        return tele
+
+    def get_pulse_status(self) -> dict:
+        return {
+            "active_matches": len(self.active_telemetry),
+            "telemetry": {k: v.dict() for k, v in self.active_telemetry.items()}
+        }
+
+# Global instance
+match_pulse = MatchPulseIngester()

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     debug: bool = False
     auth_enabled: bool = True
     batch_enabled: bool = False
+    environment: str = "development"
+    admin_token: str = "pbg_admin_secret"
 
     # Supabase
     supabase_url: str = ""
@@ -20,6 +22,9 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str = ""
+
+    # Live Data APIs
+    the_odds_api_key: str = ""
 
     model_config = {
         "env_file": str(_ENV_FILE),

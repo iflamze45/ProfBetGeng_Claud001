@@ -38,6 +38,8 @@ PICK_MAP: dict[str, str] = {
     "no": "No",
     "gg": "Yes",
     "ng": "No",
+    "o": "Over",
+    "u": "Under"
 }
 
 UNSUPPORTED_MARKETS = {MarketType.UNSUPPORTED}
@@ -85,9 +87,10 @@ class Bet9jaConverter:
 
         total_odds = None
         if converted:
-            total_odds = round(
-                sum(s.odds for s in converted) / len(converted), 2
-            ) if len(converted) > 1 else converted[0].odds
+            prod = 1.0
+            for s in converted:
+                prod *= (s.odds or 1.0)
+            total_odds = round(prod, 2)
 
         return ConvertedTicket(
             source_booking_code=ticket.source_booking_code,
@@ -102,4 +105,19 @@ class Bet9jaConverter:
 
     def _normalize_pick(self, sel: NormalizedSelection) -> str:
         pick = sel.pick.strip()
-        return PICK_MAP.get(pick, PICK_MAP.get(pick.lower(), pick))
+        bet9ja_pick = PICK_MAP.get(pick, PICK_MAP.get(pick.lower(), pick))
+        
+        # Merge the normalized 'Line' back in for the target platform reconstruction
+        if sel.line is not None:
+            if sel.market_type == MarketType.OVER_UNDER:
+                action = "Over" if pick.lower() in ["o", "over"] else "Under"
+                return f"{action} {sel.line}"
+            elif sel.market_type == MarketType.PLAYER_PROP:
+                line_str = f" {sel.line}" if sel.line else ""
+                return f"{sel.pick}{line_str}"
+            elif sel.market_type in (MarketType.ASIAN_HANDICAP, MarketType.EUROPEAN_HANDICAP):
+                return f"{bet9ja_pick} ({sel.line})"
+            else:
+                return f"{bet9ja_pick} {sel.line}"
+                
+        return bet9ja_pick

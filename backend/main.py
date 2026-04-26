@@ -3,8 +3,31 @@ ProfBetGeng — FastAPI Entry Point
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+import asyncio
+
 from .routes import router
 from .config import get_settings
+from .services.pbg_streaming_protocol import LiveOddsEngine, live_odds_manager
+from .services.value_discovery import discovery_hub
+from .services.data_ingestion import ingestion_engine
+
+# Initialize our Live Edge
+pulse_odds_engine = LiveOddsEngine(live_odds_manager)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("BOOOT SEQUENCE: Initiating PBG Ingestion, TicketPulse & Value Discovery Engines...")
+    ingestion_task = asyncio.create_task(ingestion_engine.start_polling())
+    odds_task = asyncio.create_task(pulse_odds_engine.start_stream())
+    vdh_task = asyncio.create_task(discovery_hub.start_polling())
+    yield
+    print("SHUTDOWN SEQUENCE: Terminating Live Engines...")
+    ingestion_engine.stop()
+    pulse_odds_engine.stop_stream()
+    discovery_hub.stop()
+    await asyncio.gather(ingestion_task, odds_task, vdh_task)
+
 
 
 def create_app() -> FastAPI:
@@ -14,12 +37,18 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         docs_url="/docs",
-        redoc_url="/redoc"
+        redoc_url="/redoc",
+        lifespan=lifespan
     )
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

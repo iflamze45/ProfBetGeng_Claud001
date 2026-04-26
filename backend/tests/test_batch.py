@@ -3,14 +3,14 @@ ProfBetGeng — Batch Conversion Tests
 M4 Step 4 | Gates G-1 through G-7
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 
 from ..main import create_app
 from ..batch import BatchConvertResponse, BatchTicketResult
 from ..models import ConvertedTicket, Bet9jaSelection
 from ..services.auth import require_api_key
-from ..routes import get_storage_service
+from ..routes import get_storage_service, get_pulse_service
 
 
 # ── Shared fixtures ───────────────────────────────────────────────────────────
@@ -54,6 +54,10 @@ def fake_converted():
 def client():
     app = create_app()
     app.dependency_overrides[require_api_key] = lambda: "dev_bypass"
+    # Provide safe mock overrides for external services
+    app.dependency_overrides[get_storage_service] = lambda: MagicMock()
+    app.dependency_overrides[get_pulse_service] = lambda: AsyncMock() if hasattr(AsyncMock, '__call__') else MagicMock() # Will use a real async mock later if needed, but for now simple mocked routes are fine
+    
     yield TestClient(app)
     app.dependency_overrides.clear()
 

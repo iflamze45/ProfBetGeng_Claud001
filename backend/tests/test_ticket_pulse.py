@@ -21,8 +21,15 @@ def make_converted(selections: list[dict], skipped: int = 0) -> ConvertedTicket:
 
 
 @pytest.fixture
-def client():
-    return TestClient(create_app())
+def client(pulse):
+    app = create_app()
+    from backend.routes import get_pulse_service, get_auth_service, get_storage_service
+    from backend.services.storage import MockStorageService
+    app.dependency_overrides[get_pulse_service] = lambda: pulse
+    app.dependency_overrides[get_auth_service] = lambda: MockAPIKeyService()
+    app.dependency_overrides[get_storage_service] = lambda: MockStorageService()
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -149,8 +156,9 @@ class TestTicketPulseRoutes:
         data = r.json()
         assert data["success"] is True
         assert data["analysis"] is not None
-        assert "score" in data["analysis"]
-        assert "narrative" in data["analysis"]
+        assert "pulse" in data["analysis"]
+        assert "score" in data["analysis"]["pulse"]
+        assert "narrative" in data["analysis"]["pulse"]
 
     def test_convert_with_analysis_pidgin(self, client):
         r = client.post(
@@ -167,7 +175,7 @@ class TestTicketPulseRoutes:
             headers={"X-API-Key": MockAPIKeyService.VALID_KEY}
         )
         assert r.status_code == 200
-        assert r.json()["analysis"]["language"] == "pid"
+        assert r.json()["analysis"]["pulse"]["language"] == "pid"
 
     def test_convert_without_analysis(self, client):
         r = client.post(
@@ -183,7 +191,8 @@ class TestTicketPulseRoutes:
             headers={"X-API-Key": MockAPIKeyService.VALID_KEY}
         )
         assert r.status_code == 200
-        assert r.json()["analysis"] is None
+        assert r.json()["analysis"]["pulse"] is None
+
 
     def test_analyse_endpoint(self, client):
         r = client.post(

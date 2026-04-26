@@ -28,3 +28,15 @@ reports/
 
 # Frontend deps
 frontend/node_modules/
+
+
+# AlexanderOS approved cleanup
+*.bak
+*.tmp
+*_output.json
+*_payload.json
+*_resp.json
+*_response.json
+*_result.json
+*status*.json
+tmp_*

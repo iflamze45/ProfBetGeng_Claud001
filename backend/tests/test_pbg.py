@@ -33,9 +33,13 @@ def storage_service():
     return MockStorageService()
 
 @pytest.fixture
-def client():
+def client(auth_service, storage_service):
     app = create_app()
-    return TestClient(app)
+    from ..routes import get_auth_service, get_storage_service
+    app.dependency_overrides[get_auth_service] = lambda: auth_service
+    app.dependency_overrides[get_storage_service] = lambda: storage_service
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 def make_ticket(selections: list[dict], code: str = "TEST001") -> SportybetTicket:
     return SportybetTicket(
@@ -320,6 +324,18 @@ class TestRoutes:
         assert "records" in r.json()
 
     def test_create_api_key(self, client):
-        r = client.post("/api/v1/keys", json={"label": "test-key", "owner": "commander"})
+        r = client.post(
+            "/api/v1/keys", 
+            json={"label": "test-key", "owner": "commander"},
+            headers={"X-Admin-Token": "pbg_admin_secret"}
+        )
         assert r.status_code == 200
         assert "key" in r.json()
+
+    def test_create_api_key_invalid_token(self, client):
+        r = client.post(
+            "/api/v1/keys", 
+            json={"label": "test-key", "owner": "commander"},
+            headers={"X-Admin-Token": "wrong_secret"}
+        )
+        assert r.status_code == 403

@@ -1,8 +1,18 @@
-from pydantic import BaseModel, Field
+import re
+from pydantic import BaseModel, Field, field_validator
 from typing import Any, Optional
 from enum import Enum
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+def sanitize_html(text: str) -> str:
+    if not text:
+        return text
+    # Strip common HTML tags
+    return re.sub(r'<[^>]*>', '', text)
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────
@@ -37,12 +47,22 @@ class SportybetSelection(BaseModel):
     odds: float
     kick_off: Optional[str] = None
 
+    @field_validator("event_name", "market", "pick")
+    @classmethod
+    def clean_text(cls, v: str) -> str:
+        return sanitize_html(v)
+
 
 class SportybetTicket(BaseModel):
     booking_code: str
     selections: list[SportybetSelection]
     total_odds: Optional[float] = None
     stake: Optional[float] = None
+
+    @field_validator("booking_code")
+    @classmethod
+    def clean_code(cls, v: str) -> str:
+        return sanitize_html(v)
 
 
 # ── Internal Normalized Schemas ────────────────────────────────────────────
@@ -53,9 +73,12 @@ class NormalizedSelection(BaseModel):
     market_type: MarketType
     raw_market: str
     pick: str
+    line: Optional[str] = None
     odds: float
     confidence: float = 1.0
     kick_off: Optional[str] = None
+    correlation_group: Optional[str] = None # Grouping matches to detect overexposure
+    val_gap_score: float = 0.0 # (Local Odds / Global Fair) - 1
     metadata: dict = Field(default_factory=dict)
 
 
@@ -73,7 +96,7 @@ class UnresolvedSummary(BaseModel):
 
 class ResponseMeta(BaseModel):
     parser_version: str = "1.0.0"
-    processed_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    processed_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     confidence_avg: float = 1.0
 
 
@@ -82,6 +105,7 @@ class InternalTicket(BaseModel):
     selections: list[NormalizedSelection]
     total_odds: Optional[float] = None
     stake: Optional[float] = None
+    potential_returns: Optional[float] = None
     unresolved: UnresolvedSummary = Field(default_factory=lambda: UnresolvedSummary(total=0, unresolved_count=0))
     meta: ResponseMeta = Field(default_factory=ResponseMeta)
 
@@ -131,11 +155,66 @@ class ConversionRecord:
     selections_count: int
     converted_count: int
     skipped_count: int
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    stake: Optional[float] = None
+    potential_returns: Optional[float] = None
+    total_odds: Optional[float] = None
+    risk_score: Optional[int] = None
+    risk_level: Optional[str] = None
+    net_roi: Optional[float] = None # Tracked after result
+    is_settled: bool = False
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     id: Optional[str] = None
+
+@dataclass
+class ExecutionResult:
+    """The 'Finality' object—locking the outcome of a ticket."""
+    ticket_id: str
+    status: TicketStatus
+    payout_actual: float
+    roi_actual: float
+    settled_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    consensus_clv: float = 0.0 # Closing Line Value at time of settlement
 
 
 # ── API Request/Response ───────────────────────────────────────────────────
+
+class ParseTicketRequest(BaseModel):
+    raw_text: str
+
+
+class ParseTicketResponse(BaseModel):
+    success: bool
+    ticket: Optional[SportybetTicket] = None
+    error: Optional[str] = None
+
+
+class SocialTicket(BaseModel):
+    ticket_id: str
+    username: str = "Anonymous Sovereign"
+    selections_summary: str
+    total_odds: float
+    verified_roi: float = 0.0
+    sentiment_score: float
+    published_at: datetime = datetime.now()
+    mirrors_count: int = 0
+    reputation_score: int = 100 # 0-1000
+
+class MirrorAction(BaseModel):
+    target_ticket_id: str
+    source_username: str
+    applied_multiplier: float = 1.0 # fractional kelly adjustment
+
+class KellyStakeRequest(BaseModel):
+    local_odds: float
+    global_odds: float
+    social_spike: float = 1.0
+    bankroll: Optional[float] = 1000.0 # Default fallback
+
+class KellyStakeResponse(BaseModel):
+    optimal_stake: float
+    fraction: float
+    confidence: str
+    risk_ruin: float
 
 class ConvertRequest(BaseModel):
     booking_code: str
@@ -151,4 +230,5 @@ class ConvertResponse(BaseModel):
     success: bool
     converted: Optional[ConvertedTicket] = None
     analysis: Optional[Any] = None
+    sentiment: Optional[dict] = None
     error: Optional[str] = None

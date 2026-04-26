@@ -41,6 +41,11 @@ class SupabaseStorageService:
             "convertible_count": record.converted_count,
             "unconvertible_count": record.skipped_count,
             "is_fully_converted": record.skipped_count == 0,
+            "stake": record.stake,
+            "potential_returns": record.potential_returns,
+            "total_odds": record.total_odds,
+            "risk_score": record.risk_score,
+            "risk_level": record.risk_level,
             "parse_confidence": 1.0,
             "conversion_confidence": 1.0,
         }).execute()
@@ -65,6 +70,11 @@ class SupabaseStorageService:
                 selections_count=row.get("selection_count", 0),
                 converted_count=row.get("convertible_count", 0),
                 skipped_count=row.get("unconvertible_count", 0),
+                stake=row.get("stake"),
+                potential_returns=row.get("potential_returns"),
+                total_odds=row.get("total_odds"),
+                risk_score=row.get("risk_score"),
+                risk_level=row.get("risk_level"),
                 created_at=str(row.get("created_at", "")),
                 id=str(row.get("record_id", "")),
             ))

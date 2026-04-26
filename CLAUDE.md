@@ -31,7 +31,13 @@ python -m pytest backend/tests/test_pbg.py::TestSpotybetParser::test_parse_1x2 -
 
 # Run tests with asyncio mode
 python -m pytest backend/tests/test_ticket_pulse.py -v --asyncio-mode=auto
-```
+
+## ❗ Mandatory Agent Verification Protocol
+**AGENTS:** Before claiming "Success" or "Task Complete", you MUST run the following checks. Do not skip this! The user has requested strict verification to avoid regressions:
+1. `cd /Users/alexanderanthony/Projects/ProfBetGeng_Claud001 && /usr/local/bin/python3 -m pytest backend/tests/ -v`
+2. `cd /Users/alexanderanthony/Projects/ProfBetGeng_Claud001/frontend && export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 20 && npx vite build`
+
+If either command fails, YOU MUST FIX the syntax/test failure before responding to the user.
 
 Frontend (scaffold only):
 ```bash
