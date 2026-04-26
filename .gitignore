@@ -22,6 +22,8 @@ reports/
 # Env
 .env
 .env.*
+!.env.example
+!backend/.env.example
 
 # Context (regenerated each session)
 .claude-context.md
