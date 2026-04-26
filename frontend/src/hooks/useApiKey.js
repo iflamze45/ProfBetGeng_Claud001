@@ -28,3 +28,5 @@ export function useApiKey() {
 
   return { apiKey, loading, error }
 }
+
+export default useApiKey;

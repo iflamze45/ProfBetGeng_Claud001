@@ -1,10 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+    --bg-base: #0B0E14;
+    --bg-sovereign-void: #151A22;
+    --border-dim: rgba(255, 255, 255, 0.05);
+    --border-focus: rgba(255, 255, 255, 0.15);
+    --txt-dim: #738091;
+    /* Muted gray for labels */
+    --txt-bright: #FFFFFF;
+    /* Pure white for primary data */
+    --accent-cyan: #38bdf8;
+    /* Muted ice-blue */
+    --accent-red: #ef4444;
+    --accent-green: #10b981;
+    --accent-amber: #f59e0b;
+}
+
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--bg-base);
+    color: var(--txt-bright);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Typography utilities */
+.font-sans {
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+.font-data {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.txt-dim {
+    color: var(--txt-dim);
+}
+
+.txt-bright {
+    color: var(--txt-bright);
+}
+
+.txt-cyan {
+    color: var(--accent-cyan);
+}
+
+.txt-red {
+    color: var(--accent-red);
+}
+
+.txt-green {
+    color: var(--accent-green);
+}
+
+.txt-amber {
+    color: var(--accent-amber);
+}
+
+.border-base {
+    border-color: var(--border-dim);
+}
+
+.border-b-base {
+    border-bottom: 1px solid var(--border-dim);
+}
+
+.border-t-base {
+    border-top: 1px solid var(--border-dim);
+}
+
+.border-r-base {
+    border-right: 1px solid var(--border-dim);
+}
+
+.border-l-base {
+    border-left: 1px solid var(--border-dim);
+}
+
+/* Panels and structural elements */
+.panel {
+    background: var(--bg-sovereign-void);
+    border: 1px solid var(--border-dim);
+}
+
+.glass-hud {
+    background: rgba(21, 26, 34, 0.85);
+    /* Dark matte fill / frosted */
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-dim);
+}
+
+/* Sidebar navigation */
+.tab-nav {
+    border-left: 2px solid transparent;
+    transition: all 0.15s ease-in-out;
+    text-align: left;
+    color: var(--txt-dim);
+}
+
+.tab-nav:hover {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--txt-bright);
+}
+
+.tab-nav.active {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 2px solid var(--accent-cyan);
+    color: var(--txt-bright);
+}
+
+/* Data grids */
+.grid-bg {
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.data-row {
+    border-bottom: 1px solid var(--border-dim);
+    transition: background 0.1s;
+}
+
+.data-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Removed all shadows, glows, and CRT effects */
+.glow-blue {
+    box-shadow: none;
+}
+
+.crt-flicker {
+    animation: none;
+}
+
+.scanline {
+    display: none;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-focus);
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--txt-dim);
+}
+
+.fade-edges {
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(100vw);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+.animate-\\[marquee_20s_linear_infinite\\] {
+    animation: marquee 20s linear infinite;
 }
