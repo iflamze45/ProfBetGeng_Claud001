@@ -12,21 +12,39 @@ from .services.pbg_streaming_protocol import LiveOddsEngine, live_odds_manager
 from .services.value_discovery import discovery_hub
 from .services.data_ingestion import ingestion_engine
 
-# Initialize our Live Edge
 pulse_odds_engine = LiveOddsEngine(live_odds_manager)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("BOOOT SEQUENCE: Initiating PBG Ingestion, TicketPulse & Value Discovery Engines...")
+    settings = get_settings()
+    print(f"PBG {settings.app_version} starting — env: {settings.environment}")
+
+    # Wire new value signals → WebSocket broadcast
+    def _on_signal(signal):
+        asyncio.create_task(live_odds_manager.broadcast_json({
+            "type": "VALUE_SIGNAL",
+            "match_id": signal.match_id,
+            "teams": signal.teams,
+            "market": signal.market,
+            "local_odds": signal.local_odds,
+            "global_odds": signal.global_odds,
+            "value_score": signal.value_score,
+            "signal_type": signal.signal_type,
+            "timestamp": signal.timestamp.isoformat(),
+        }))
+
+    discovery_hub.on_new_signal(_on_signal)
+
     ingestion_task = asyncio.create_task(ingestion_engine.start_polling())
     odds_task = asyncio.create_task(pulse_odds_engine.start_stream())
     vdh_task = asyncio.create_task(discovery_hub.start_polling())
     yield
-    print("SHUTDOWN SEQUENCE: Terminating Live Engines...")
+    print("PBG shutdown complete.")
     ingestion_engine.stop()
     pulse_odds_engine.stop_stream()
     discovery_hub.stop()
-    await asyncio.gather(ingestion_task, odds_task, vdh_task)
+    await asyncio.gather(ingestion_task, odds_task, vdh_task, return_exceptions=True)
 
 
 
