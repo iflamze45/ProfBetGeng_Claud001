@@ -419,6 +419,25 @@ async def assess_risk(data: Dict[str, Any], api_key: str = Depends(require_api_k
     bankroll = data.get("bankroll", 1000000.0)
     return risk_oracle.assess_risk(selections, bankroll)
 
+@router.get("/api/v1/sgn/nodes")
+async def get_sgn_nodes(api_key: str = Depends(require_api_key)):
+    return [
+        {
+            "id": "PBG-NODE-LOCAL",
+            "endpoint": "http://localhost:8000",
+            "region": "LOCAL",
+            "status": "ONLINE",
+            "latency_ms": 1,
+            "active_tasks": 0,
+        }
+    ]
+
+
+@router.get("/api/v1/gov/proposals")
+async def get_gov_proposals(api_key: str = Depends(require_api_key)):
+    return []
+
+
 @router.get("/api/v1/history")
 async def get_history(
     limit: int = 50,

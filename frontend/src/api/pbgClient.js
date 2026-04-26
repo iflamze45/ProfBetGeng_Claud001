@@ -11,8 +11,10 @@ async function request(path, options = {}) {
 }
 
 export async function generateApiKey(label = 'pbg-web-user') {
+  const adminToken = import.meta.env.VITE_ADMIN_TOKEN || 'pbg_admin_secret'
   return request('/api/v1/keys', {
     method: 'POST',
+    headers: { 'X-Admin-Token': adminToken },
     body: JSON.stringify({ label }),
   })
 }

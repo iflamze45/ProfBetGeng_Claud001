@@ -12,6 +12,7 @@ __pycache__/
 Supernova_System/
 icyflamze-creative-os/
 components/
+!frontend/src/components/
 data/
 lib/
 logs/
