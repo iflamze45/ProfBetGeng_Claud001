@@ -177,3 +177,27 @@ export async function simulateMeshFailure({ apiKey, nodeId }) {
     body: JSON.stringify({ node_id: nodeId })
   })
 }
+
+export async function getMarketSignals(apiKey) {
+  return request('/api/v1/market/signals', {
+    headers: { 'X-API-Key': apiKey },
+  })
+}
+
+export async function getSgnNodes(apiKey) {
+  return request('/api/v1/sgn/nodes', {
+    headers: { 'X-API-Key': apiKey },
+  })
+}
+
+export async function getMindStatus(apiKey) {
+  return request('/api/v1/mind/status', {
+    headers: { 'X-API-Key': apiKey },
+  })
+}
+
+export async function getGovProposals(apiKey) {
+  return request('/api/v1/gov/proposals', {
+    headers: { 'X-API-Key': apiKey },
+  })
+}

@@ -3,8 +3,10 @@ import CommandCenter from './components/CommandCenter';
 import MatrixConvert from './components/MatrixConvert';
 import GovernanceHUD from './components/GovernanceHUD';
 import { Globe, Cpu, Zap, Share2, Terminal, Shield, Ghost, Activity, Gavel, Mic, CircleDot, Clock } from 'lucide-react';
+import { useSovereignState } from './hooks/useSovereignState';
+import { useApiKey } from './hooks/useApiKey';
+import { getMarketSignals } from './api/pbgClient';
 
-// Imported modular HUDs (placeholders or implementations if they exist)
 const MarketScanner = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Market Scanner Active</div>;
 const RiskOracle = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Risk Oracle Active</div>;
 const ExecutionHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Execution SEA Active</div>;
@@ -13,31 +15,55 @@ const InstitutionalHUD = () => <div className="p-6 text-[#738091] uppercase trac
 const TreasuryHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Sovereign Wealth Treasury Active</div>;
 const MeshHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Neural Mesh Active</div>;
 const SingularityHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Singularity Core Active</div>;
-const EventLog = () => <div className="hidden">Event Log</div>;
 
-const LivePulseFooter = () => (
-    <div className="bg-[#151A22] border-t border-white/10 p-1.5 flex items-center justify-between z-10 sticky bottom-0 overflow-hidden font-sans">
-        <div className="flex items-center gap-3 px-3 border-r border-white/10 pr-6">
-            <CircleDot className="w-3 h-3 text-sky-500" />
-            <span className="text-[9px] font-bold text-white uppercase tracking-widest">Live Pulse</span>
-        </div>
-        <div className="flex-1 flex overflow-hidden whitespace-nowrap px-4">
-            <div className="animate-[marquee_20s_linear_infinite] inline-block text-[11px] font-mono font-bold text-[#738091] tracking-tighter uppercase">
-                <span className="mx-6"><span className="text-white">FOOTBALL</span> | Arsenal 2-1 Chelsea (78')</span>
-                <span className="mx-6"><span className="text-white">BASKETBALL</span> | Lakers 102-98 Suns (Q4 2:10)</span>
-                <span className="mx-6"><span className="text-white">TENNIS</span> | Ovtcharov 2-1 Ma Long (Set 4 8-10)</span>
-                <span className="mx-6"><span className="text-white">FOOTBALL</span> | Real Madrid 0-0 City (HT)</span>
-                <span className="mx-6"><span className="text-white">CRICKET</span> | MI 150/4 vs CSK (18.2 OVERS)</span>
+function LivePulseFooter() {
+    const { apiKey } = useApiKey();
+    const { recentEvents } = useSovereignState();
+    const [signals, setSignals] = useState([]);
+
+    useEffect(() => {
+        if (!apiKey) return;
+        getMarketSignals(apiKey)
+            .then(d => setSignals(d.signals || []))
+            .catch(() => {});
+    }, [apiKey]);
+
+    // Build ticker items: WS conversion events first, then market signals
+    const eventItems = recentEvents.map(e =>
+        `CONVERTED · ${e.source}→${e.target} · ${e.selections} LEG${e.selections !== 1 ? 'S' : ''}`
+    );
+    const signalItems = signals.map(s =>
+        `${s.market} · ${s.teams} · VALUE +${(s.value_score * 100).toFixed(1)}%`
+    );
+    const items = [...eventItems, ...signalItems];
+
+    return (
+        <div className="bg-[#151A22] border-t border-white/10 p-1.5 flex items-center justify-between z-10 sticky bottom-0 overflow-hidden font-sans">
+            <div className="flex items-center gap-3 px-3 border-r border-white/10 pr-6 shrink-0">
+                <CircleDot className={`w-3 h-3 ${items.length > 0 ? 'text-emerald-500' : 'text-[#738091]'}`} />
+                <span className="text-[9px] font-bold text-white uppercase tracking-widest">Live Pulse</span>
+            </div>
+            <div className="flex-1 flex overflow-hidden whitespace-nowrap px-4">
+                {items.length > 0 ? (
+                    <div className="animate-[marquee_30s_linear_infinite] inline-block text-[11px] font-mono font-bold text-[#738091] tracking-tighter uppercase">
+                        {items.map((item, i) => (
+                            <span key={i} className="mx-8">
+                                <span className="text-sky-400">●</span> {item}
+                            </span>
+                        ))}
+                    </div>
+                ) : (
+                    <span className="text-[11px] font-mono text-[#738091] uppercase tracking-widest">AWAITING SIGNAL FEED...</span>
+                )}
             </div>
         </div>
-    </div>
-);
+    );
+}
 
 export default function SovereignTerminal() {
     const [activeTab, setActiveTab] = useState('command');
     const [currentTime, setCurrentTime] = useState('');
-
-    const state = { status: 'STABLE', mesh: { active_nodes: 3 }, solana: { USDC: '0.00' } };
+    const state = useSovereignState();
 
     useEffect(() => {
         const timer = setInterval(() => {

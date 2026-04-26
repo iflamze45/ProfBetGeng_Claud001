@@ -18,7 +18,8 @@ let globalState = {
     signals: [],
     active_nodes: 0,
     timestamp: null,
-    status: 'OFFLINE'
+    status: 'OFFLINE',
+    recentEvents: [],
 }
 
 let listeners = []
@@ -49,6 +50,19 @@ const connect = () => {
                         ...msg.data,
                         status: 'STABLE',
                         timestamp: msg.timestamp
+                    }
+                    notify()
+                } else if (msg.type === 'CONVERSION_SUCCESS') {
+                    const entry = {
+                        type: 'CONVERSION',
+                        source: msg.source?.toUpperCase() || 'SPORTYBET',
+                        target: msg.target?.toUpperCase() || 'BET9JA',
+                        selections: msg.selections || 0,
+                        timestamp: msg.timestamp || new Date().toISOString(),
+                    }
+                    globalState = {
+                        ...globalState,
+                        recentEvents: [entry, ...globalState.recentEvents].slice(0, 20),
                     }
                     notify()
                 }

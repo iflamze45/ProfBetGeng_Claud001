@@ -40,3 +40,37 @@ frontend/node_modules/
 *_result.json
 *status*.json
 tmp_*
+
+# Generated architecture/phase docs (not committed — use ARCHITECTURE.md or vault)
+ARCHITECTURE_PHASE_*.md
+ARCHITECTURE_POST_SINGULARITY.md
+BLUEPRINT.md
+DESIGN.md
+VULNERABILITY_AUDIT.md
+
+# Misplaced root-level frontend HUD components
+frontend/CommandCenter.jsx
+frontend/EventLog.jsx
+frontend/ExecutionHUD.jsx
+frontend/GhostProtocolHUD.jsx
+frontend/GovernanceHUD.jsx
+frontend/InstitutionalHUD.jsx
+frontend/MatrixConvert.jsx
+frontend/MeshHUD.jsx
+frontend/SingularityHUD.jsx
+frontend/TreasuryHUD.jsx
+frontend/deploy.py
+frontend/status.py
+frontend/.appdeploy
+frontend/node_modules_symlink
+
+# Batch 6/7 — deploy artifacts and tool dirs (review separately)
+.appdeploy
+deploy/
+.agents/
+.claire/
+gemma-gem/
+rtk/
+super_agent_registry/
+everything-claude-code/
+venv/
