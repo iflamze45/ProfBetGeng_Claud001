@@ -55,9 +55,18 @@ const connect = () => {
                 } else if (msg.type === 'CONVERSION_SUCCESS') {
                     const entry = {
                         type: 'CONVERSION',
-                        source: msg.source?.toUpperCase() || 'SPORTYBET',
-                        target: msg.target?.toUpperCase() || 'BET9JA',
-                        selections: msg.selections || 0,
+                        label: `CONVERTED · ${(msg.source || 'SPORTYBET').toUpperCase()}→${(msg.target || 'BET9JA').toUpperCase()} · ${msg.selections || 0} LEG${msg.selections !== 1 ? 'S' : ''}`,
+                        timestamp: msg.timestamp || new Date().toISOString(),
+                    }
+                    globalState = {
+                        ...globalState,
+                        recentEvents: [entry, ...globalState.recentEvents].slice(0, 20),
+                    }
+                    notify()
+                } else if (msg.type === 'VALUE_SIGNAL') {
+                    const entry = {
+                        type: 'SIGNAL',
+                        label: `${msg.signal_type} · ${msg.market} · ${msg.teams} · +${(msg.value_score * 100).toFixed(1)}%`,
                         timestamp: msg.timestamp || new Date().toISOString(),
                     }
                     globalState = {

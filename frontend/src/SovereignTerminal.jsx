@@ -28,12 +28,10 @@ function LivePulseFooter() {
             .catch(() => {});
     }, [apiKey]);
 
-    // Build ticker items: WS conversion events first, then market signals
-    const eventItems = recentEvents.map(e =>
-        `CONVERTED · ${e.source}→${e.target} · ${e.selections} LEG${e.selections !== 1 ? 'S' : ''}`
-    );
+    // Build ticker: live WS events first, then market signals from REST
+    const eventItems = recentEvents.map(e => e.label);
     const signalItems = signals.map(s =>
-        `${s.market} · ${s.teams} · VALUE +${(s.value_score * 100).toFixed(1)}%`
+        `${s.signal_type} · ${s.market} · ${s.teams} · +${(s.value_score * 100).toFixed(1)}%`
     );
     const items = [...eventItems, ...signalItems];
 
