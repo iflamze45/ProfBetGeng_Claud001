@@ -1,9 +1,10 @@
 const BASE_URL = '' // Use relative path for Vite proxy in dev and same-origin in prod
 
 async function request(path, options = {}) {
+  const { headers = {}, ...rest } = options
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
+    ...rest,
+    headers: { 'Content-Type': 'application/json', ...headers },
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`)
@@ -186,6 +187,24 @@ export async function getMarketSignals(apiKey) {
   })
 }
 
+export async function getRiskProfile(apiKey) {
+  return request('/api/v1/quant/risk', {
+    headers: { 'X-API-Key': apiKey },
+  })
+}
+
+export async function getSolanaVault(apiKey) {
+  return request('/api/v1/solana/vault', {
+    headers: { 'X-API-Key': apiKey },
+  })
+}
+
+export async function getVaultStatus(apiKey) {
+  return request('/api/v1/vault/status', {
+    headers: { 'X-API-Key': apiKey },
+  })
+}
+
 export async function getSgnNodes(apiKey) {
   return request('/api/v1/sgn/nodes', {
     headers: { 'X-API-Key': apiKey },
@@ -198,8 +217,22 @@ export async function getMindStatus(apiKey) {
   })
 }
 
+export async function triggerMindOoda(apiKey) {
+  return request('/api/v1/mind/ooda', {
+    method: 'POST',
+    headers: { 'X-API-Key': apiKey },
+  })
+}
+
 export async function getGovProposals(apiKey) {
   return request('/api/v1/gov/proposals', {
+    headers: { 'X-API-Key': apiKey },
+  })
+}
+
+export async function triggerBeyondHorizon(apiKey) {
+  return request('/api/v1/singularity/beyond-horizon', {
+    method: 'POST',
     headers: { 'X-API-Key': apiKey },
   })
 }

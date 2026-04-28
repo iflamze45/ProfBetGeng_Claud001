@@ -2,19 +2,19 @@ import React, { useState, useEffect } from 'react';
 import CommandCenter from './components/CommandCenter';
 import MatrixConvert from './components/MatrixConvert';
 import GovernanceHUD from './components/GovernanceHUD';
+import {
+    ExecutionModule,
+    GhostModule,
+    InstitutionalModule,
+    MarketScannerModule,
+    MeshModule,
+    SingularityModule,
+    TreasuryModule,
+} from './components/OperationalModules';
 import { Globe, Cpu, Zap, Share2, Terminal, Shield, Ghost, Activity, Gavel, Mic, CircleDot, Clock } from 'lucide-react';
 import { useSovereignState } from './hooks/useSovereignState';
 import { useApiKey } from './hooks/useApiKey';
 import { getMarketSignals } from './api/pbgClient';
-
-const MarketScanner = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Market Scanner Active</div>;
-const RiskOracle = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Risk Oracle Active</div>;
-const ExecutionHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Execution SEA Active</div>;
-const GhostProtocolHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Ghost Protocol Active</div>;
-const InstitutionalHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Institutional Oracle Active</div>;
-const TreasuryHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Sovereign Wealth Treasury Active</div>;
-const MeshHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Neural Mesh Active</div>;
-const SingularityHUD = () => <div className="p-6 text-[#738091] uppercase tracking-widest font-bold">Singularity Core Active</div>;
 
 function LivePulseFooter() {
     const { apiKey } = useApiKey();
@@ -73,14 +73,14 @@ export default function SovereignTerminal() {
     const renderModule = () => {
         switch (activeTab) {
             case 'command': return <CommandCenter />;
-            case 'scanner': return <MarketScanner />;
+            case 'scanner': return <MarketScannerModule />;
             case 'convert': return <MatrixConvert />;
-            case 'execution': return <ExecutionHUD />;
-            case 'ghost': return <GhostProtocolHUD />;
-            case 'ORACLE': return <InstitutionalHUD />;
-            case 'TREASURY': return <TreasuryHUD />;
-            case 'mesh': return <MeshHUD />;
-            case 'singularity': return <SingularityHUD />;
+            case 'execution': return <ExecutionModule />;
+            case 'ghost': return <GhostModule />;
+            case 'oracle': return <InstitutionalModule />;
+            case 'treasury': return <TreasuryModule />;
+            case 'mesh': return <MeshModule />;
+            case 'singularity': return <SingularityModule />;
             case 'governance': return <GovernanceHUD />;
             default: return <CommandCenter />;
         }
@@ -93,9 +93,9 @@ export default function SovereignTerminal() {
         { id: 'convert', label: 'MATRIX_CONVERT', icon: Terminal },
         { id: 'singularity', label: 'SINGULARITY_CORE', icon: Zap },
         { id: 'governance', label: 'SHARD_GOVERNANCE', icon: Gavel },
-        { id: 'ORACLE', label: 'INSTITUTIONAL_ORACLE', icon: Share2 },
+        { id: 'oracle', label: 'INSTITUTIONAL_ORACLE', icon: Share2 },
         { id: 'execution', label: 'EXECUTION_SEA', icon: Activity },
-        { id: 'TREASURY', label: 'SOVEREIGN_WEALTH', icon: Shield },
+        { id: 'treasury', label: 'SOVEREIGN_WEALTH', icon: Shield },
         { id: 'ghost', label: 'GHOST_PROTOCOL', icon: Ghost }
     ];
 
