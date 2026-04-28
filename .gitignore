@@ -153,6 +153,8 @@ singularity_state.json
 source_skills.txt
 test_file.txt
 tests/
+!backend/tests/
+!backend/tests/test_websocket_serialization.py
 upload_info.json
 
 # HTML preview exports
