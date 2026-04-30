@@ -1,8 +1,7 @@
 import asyncio
 import uuid as _uuid
 import datetime as _datetime
-from typing import Optional, Dict, Any
-from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Security, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.responses import StreamingResponse
@@ -11,7 +10,7 @@ from pydantic import BaseModel
 
 from .models import (
     ConvertedTicket, SportybetTicket, ConversionRecord,
-    APIKeyCreate, APIKeyResponse, SportybetSelection,
+    APIKeyCreate, APIKeyResponse,
     ConvertRequest, ConvertResponse,
 )
 from .services.sportybet_parser import SportybetAdapter
@@ -260,7 +259,7 @@ async def convert_batch(
 
 
 @router.get("/api/v1/quant/arbs")
-async def get_arb_windows(api_key: str = Security(require_api_key)):
+async def get_arb_windows(_: str = Security(require_api_key)):
     """Retrieve multi-market arbitrage windows."""
     mock_arbs = [
         {
@@ -282,6 +281,6 @@ async def websocket_odds_endpoint(websocket: WebSocket):
     await live_odds_manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_text()
+            await websocket.receive_text()
     except WebSocketDisconnect:
         live_odds_manager.disconnect(websocket)

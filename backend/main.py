@@ -18,7 +18,7 @@ pulse_odds_engine = LiveOddsEngine(live_odds_manager)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     settings = get_settings()
     logger.info(f"PBG {settings.app_version} starting — env: {settings.environment}")
     print(f"PBG {settings.app_version} starting — env: {settings.environment}")

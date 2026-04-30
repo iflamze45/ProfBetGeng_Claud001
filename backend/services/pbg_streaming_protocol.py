@@ -4,7 +4,7 @@ import logging
 import asyncio
 import time
 from typing import AsyncGenerator, Dict, Any
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 
 from backend.services.json_safety import to_json_safe
 
