@@ -20,6 +20,10 @@ pulse_odds_engine = LiveOddsEngine(live_odds_manager)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
+    if settings.environment == "production" and settings.admin_token in ("", "pbg_admin_secret"):
+        raise RuntimeError(
+            "ADMIN_TOKEN env var must be set to a strong secret in production"
+        )
     logger.info(f"PBG {settings.app_version} starting — env: {settings.environment}")
     print(f"PBG {settings.app_version} starting — env: {settings.environment}")
     odds_task = asyncio.create_task(pulse_odds_engine.start_stream())
@@ -43,12 +47,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174",
-        ],
+        allow_origins=settings.allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
