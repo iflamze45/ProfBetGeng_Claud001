@@ -10,6 +10,8 @@ from unittest.mock import patch, MagicMock
 
 from ..main import create_app
 from ..services.auth import require_api_key
+from ..routes import get_storage_service
+from ..services.storage import MockStorageService
 from ..services.sportybet_parser import SportybetAdapter
 from ..services.converter import Bet9jaConverter
 from ..models import (
@@ -31,7 +33,9 @@ def converter():
 @pytest.fixture
 def client():
     app = create_app()
+    storage = MockStorageService()
     app.dependency_overrides[require_api_key] = lambda: "dev_bypass"
+    app.dependency_overrides[get_storage_service] = lambda: storage
     yield TestClient(app)
     app.dependency_overrides.clear()
 

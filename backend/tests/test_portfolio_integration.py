@@ -4,7 +4,8 @@ from backend.main import create_app
 from backend.services.auth import require_api_key, MockAPIKeyService
 from backend.services.storage import MockStorageService
 from backend.models import ConversionRecord
-from backend.routes import get_storage_service
+from backend.routes import get_pulse_service, get_storage_service
+from backend.services.ticket_pulse import MockTicketPulseService
 
 @pytest.fixture
 def storage():
@@ -15,6 +16,7 @@ def client(storage):
     app = create_app()
     app.dependency_overrides[require_api_key] = lambda: "dev_bypass"
     app.dependency_overrides[get_storage_service] = lambda: storage
+    app.dependency_overrides[get_pulse_service] = lambda: MockTicketPulseService()
     yield TestClient(app)
     app.dependency_overrides.clear()
 
