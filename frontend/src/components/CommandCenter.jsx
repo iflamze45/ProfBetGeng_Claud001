@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ShieldCheck, BarChart3, Zap, AlertTriangle, ChevronRight, ArrowRight, RefreshCw, Clock } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
 import { getArbWindows } from '../api/pbgClient';

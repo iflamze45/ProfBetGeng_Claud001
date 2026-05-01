@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Server, Activity, ShieldAlert, Cpu, Gavel, Filter, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Server, Activity, ShieldAlert, Cpu, Gavel, Filter, RefreshCw } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
 const getSgnNodes = () => Promise.resolve([]);
 const getGovProposals = () => Promise.resolve([]);

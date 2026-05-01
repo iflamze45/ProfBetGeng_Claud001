@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCw, Database, Activity, ChevronRight, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
 import { convertTicket, analyseTicketStream, getHistory, getArbWindows } from '../api/pbgClient';
