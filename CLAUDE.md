@@ -12,7 +12,7 @@ All commands run from the repo root unless noted.
 
 ```bash
 # Run in: Claude Code Terminal
-cd /Users/alexanderanthony/Projects/ProfBetGeng_Claud001
+cd "/Users/alexanderanthony/Backend Services/apis/ProfBetGeng_Claud001"
 
 # Install dependencies
 pip install -r requirements.txt
@@ -34,8 +34,8 @@ python -m pytest backend/tests/test_ticket_pulse.py -v --asyncio-mode=auto
 
 ## ❗ Mandatory Agent Verification Protocol
 **AGENTS:** Before claiming "Success" or "Task Complete", you MUST run the following checks. Do not skip this! The user has requested strict verification to avoid regressions:
-1. `cd /Users/alexanderanthony/Projects/ProfBetGeng_Claud001 && /usr/local/bin/python3 -m pytest backend/tests/ -v`
-2. `cd /Users/alexanderanthony/Projects/ProfBetGeng_Claud001/frontend && export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 20 && npx vite build`
+1. `cd "/Users/alexanderanthony/Backend Services/apis/ProfBetGeng_Claud001" && /usr/local/bin/python3 -m pytest backend/tests/ -v`
+2. `cd "/Users/alexanderanthony/Landing Page Sites/tools/profbetgeng-app" && export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 20 && npx vite build`
 
 If either command fails, YOU MUST FIX the syntax/test failure before responding to the user.
 
@@ -78,7 +78,17 @@ SportybetTicket (raw input)
 
 **TicketPulse fallback**: `TicketPulseService.analyse()` calls Claude API; on timeout, HTTP error, or JSON parse failure it silently falls back to `_heuristic_score()` and sets `source="heuristic_fallback"`.
 
-**Batch**: `POST /api/v1/convert-batch` runs up to 10 tickets concurrently via `asyncio.gather`. Individual failures are captured per-index; the batch never aborts. Gated by `batch_enabled` flag in settings.
+**Batch**: `POST /api/v1/convert-batch` runs up to 20 tickets concurrently via `asyncio.gather`. Individual failures are captured per-index; the batch never aborts. Gated by `batch_enabled` flag in settings.
+
+**Response Intelligence (M2 Step 3)**: `/api/v1/convert` returns a composite `analysis` object with `pulse` (TicketPulseService RiskReport) and `metrics` (RiskEngine hardened metrics), plus a `sentiment` field from SentimentAnalysisService. All gated by `include_analysis` flag. `/api/v1/analyse` and `/api/v1/analyse/stream` are standalone analysis endpoints.
+
+## M2 Milestone Status
+
+| Step | Name | Status |
+|------|------|--------|
+| 1 | Adapter Architecture | ✅ Complete |
+| 2 | Parser Depth Expansion | ✅ Complete |
+| 3 | Response Intelligence | ✅ Complete — 117/117 tests passing (2026-04-30) |
 
 ### API Endpoints
 
