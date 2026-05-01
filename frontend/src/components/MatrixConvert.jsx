@@ -1,7 +1,28 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCw, Database, Activity, ChevronRight, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
-import { parseRawText, convertTicket } from '../api/pbgClient';
+import { convertTicket, analyseTicketStream, getHistory, getArbWindows } from '../api/pbgClient';
+
+function parseSelectionsText(text) {
+  return text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map((line, i) => {
+      const parts = line.split('|').map(p => p.trim())
+      if (parts.length < 4) return null
+      const odds = parseFloat(parts[3])
+      if (isNaN(odds)) return null
+      return {
+        event_id: String(i + 1),
+        event_name: parts[0],
+        market: parts[1],
+        pick: parts[2],
+        odds,
+      }
+    })
+    .filter(Boolean)
+}
 
 export default function MatrixConvert() {
     const { apiKey, loading: keyLoading, error: keyError } = useApiKey();
@@ -9,27 +30,67 @@ export default function MatrixConvert() {
     const [target, setTarget] = useState('Bet9ja');
     const [rawText, setRawText] = useState('');
     const [stake, setStake] = useState('');
-    const [status, setStatus] = useState('IDLE'); // IDLE, CONVERTING, SUCCESS, ERROR
+    const [status, setStatus] = useState('IDLE');
     const [result, setResult] = useState(null);
     const [errorMsg, setErrorMsg] = useState('');
+    const [narrative, setNarrative] = useState('');
+    const [narrativeStreaming, setNarrativeStreaming] = useState(false);
+    const [arbWindows, setArbWindows] = useState([]);
+    const [history, setHistory] = useState([]);
 
     const platforms = ['SportyBet', '1xBet', 'Bet9ja', 'MSport', 'BetKing'];
 
+    useEffect(() => {
+        if (!apiKey) return;
+        getArbWindows({ apiKey })
+            .then(d => setArbWindows(d.windows || []))
+            .catch(() => {});
+    }, [apiKey]);
+
+    useEffect(() => {
+        refreshHistory();
+    }, [apiKey]);
+
+    async function refreshHistory() {
+        if (!apiKey) return;
+        try {
+            const d = await getHistory(apiKey);
+            setHistory((d.records || []).slice(0, 5));
+        } catch (_) {}
+    }
+
+    async function startNarrativeStream(converted) {
+        setNarrative('');
+        setNarrativeStreaming(true);
+        try {
+            for await (const chunk of analyseTicketStream({ apiKey, converted })) {
+                setNarrative(prev => prev + chunk);
+            }
+        } catch (_) {
+            // ignore — keep whatever streamed
+        } finally {
+            setNarrativeStreaming(false);
+        }
+    }
+
     const handleConvert = async () => {
-        if (!rawText.trim() || !apiKey) return;
+        const selections = parseSelectionsText(rawText);
+        if (!selections.length) {
+            setErrorMsg('Enter at least one selection: Team A vs Team B | Market | Pick | Odds');
+            setStatus('ERROR');
+            return;
+        }
+        if (stake && (isNaN(parseFloat(stake)) || parseFloat(stake) <= 0)) {
+            setErrorMsg('Stake must be a positive number');
+            setStatus('ERROR');
+            return;
+        }
         setStatus('CONVERTING');
         setErrorMsg('');
         setResult(null);
-
+        setNarrative('');
         try {
-            // Step 1: parse raw ticket text
-            const parsed = await parseRawText({ apiKey, rawText });
-            if (!parsed.success) throw new Error(parsed.error || 'Parse failed');
-
-            const selections = parsed.ticket?.selections || [];
-
-            // Step 2: convert to target platform
-            const bookingCode = parsed.ticket?.booking_code || `WEB-${Date.now()}`
+            const bookingCode = `WEB-${Date.now()}`;
             const converted = await convertTicket({
                 apiKey,
                 bookingCode,
@@ -37,11 +98,13 @@ export default function MatrixConvert() {
                 selections,
                 includeAnalysis: true,
             });
-
             if (!converted.success) throw new Error('Conversion failed');
-
             setResult(converted);
             setStatus('SUCCESS');
+            refreshHistory();
+            if (converted.converted) {
+                startNarrativeStream(converted.converted);
+            }
         } catch (err) {
             setErrorMsg(err.message || 'Unknown error');
             setStatus('ERROR');
@@ -56,8 +119,11 @@ export default function MatrixConvert() {
         return 'text-red-400';
     };
 
+    const sidebarWarnings = result?.converted?.warnings || [];
+    const showArbWindows = sidebarWarnings.length === 0;
+
     return (
-        <div className="flex flex-col h-full space-y-6 animate-in fade-in duration-500 font-sans">
+        <div className="flex flex-col h-full space-y-6 animate-in fade-in duration-500 font-sans overflow-x-hidden">
             <div className="flex items-end justify-between border-b border-white/5 pb-4">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight text-white m-0 p-0">Matrix Translation</h2>
@@ -117,11 +183,11 @@ export default function MatrixConvert() {
                         </div>
 
                         <div className="mb-4">
-                            <label className="block text-[10px] uppercase text-[#738091] mb-2 font-medium tracking-wide">Raw Ticket Text</label>
+                            <label className="block text-[10px] uppercase text-[#738091] mb-2 font-medium tracking-wide">Selections (one per line)</label>
                             <textarea
                                 rows={5}
                                 className="w-full bg-[#0B0E14] border border-white/10 text-white font-data text-[13px] rounded py-3 px-4 placeholder-[#3A4350] transition-colors focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 resize-none"
-                                placeholder={"Paste SportyBet ticket here...\nE.g.:\nArsenal vs Chelsea - 1X2 - Home - 2.10\nMan City vs Liverpool - BTTS - Yes - 1.80"}
+                                placeholder={"Arsenal vs Chelsea | 1X2 | Home | 2.10\nMan City vs Liverpool | BTTS | Yes | 1.80"}
                                 value={rawText}
                                 onChange={(e) => setRawText(e.target.value)}
                             />
@@ -204,49 +270,120 @@ export default function MatrixConvert() {
                                         </p>
                                     </div>
                                 </div>
-                                {result.analysis?.pulse?.narrative && (
+
+                                {result.converted?.selections?.length > 0 && (
+                                    <div className="bg-[#0B0E14] border border-white/5 rounded overflow-hidden">
+                                        <div className="px-4 py-2 border-b border-white/5 bg-[#151A22]">
+                                            <p className="text-[10px] uppercase text-[#738091] font-medium tracking-wide">
+                                                Bet9ja Selections ({result.converted.selections.length})
+                                            </p>
+                                        </div>
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-white/5">
+                                                    <th className="px-4 py-2 text-[10px] uppercase text-[#738091] font-medium">Match</th>
+                                                    <th className="px-4 py-2 text-[10px] uppercase text-[#738091] font-medium">Market</th>
+                                                    <th className="px-4 py-2 text-[10px] uppercase text-[#738091] font-medium">Pick</th>
+                                                    <th className="px-4 py-2 text-[10px] uppercase text-[#738091] font-medium text-right">Odds</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/5">
+                                                {result.converted.selections.map((sel, i) => (
+                                                    <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                                                        <td className="px-4 py-2.5 text-[12px] text-white/80">{sel.event_name}</td>
+                                                        <td className="px-4 py-2.5 text-[11px] text-[#738091]">{sel.market}</td>
+                                                        <td className="px-4 py-2.5 text-[11px] text-sky-400 font-medium">{sel.pick}</td>
+                                                        <td className="px-4 py-2.5 text-[12px] font-data text-emerald-400 text-right">{sel.odds.toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {result.converted.warnings?.length > 0 && (
+                                            <div className="px-4 py-2 border-t border-white/5 bg-[#0B0E14]">
+                                                {result.converted.warnings.map((w, i) => (
+                                                    <p key={i} className="text-[10px] text-yellow-400 font-medium">{w.message}</p>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {(narrative || narrativeStreaming) && (
                                     <div className="bg-[#0B0E14] border border-white/5 rounded p-4">
-                                        <p className="text-[10px] uppercase text-[#738091] font-medium tracking-wide mb-2">Intelligence Narrative</p>
-                                        <p className="text-[12px] text-white/70 leading-relaxed">{result.analysis.pulse.narrative}</p>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <p className="text-[10px] uppercase text-[#738091] font-medium tracking-wide">AI Risk Narrative</p>
+                                            {narrativeStreaming && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />}
+                                        </div>
+                                        <p className="text-[12px] text-white/70 leading-relaxed whitespace-pre-wrap">
+                                            {narrative || '...'}
+                                        </p>
                                     </div>
                                 )}
                             </div>
                         )}
                     </div>
+
+                    {/* Recent Conversions */}
+                    {history.length > 0 && (
+                        <div className="glass-hud p-4 rounded">
+                            <h3 className="text-[10px] uppercase text-[#738091] font-medium tracking-wide mb-3">Recent Conversions</h3>
+                            <div className="space-y-2">
+                                {history.map((rec, i) => (
+                                    <div key={i} className="flex justify-between items-center text-[11px]">
+                                        <span className="text-white/60 font-data">{rec.source_booking_code}</span>
+                                        <span className="text-[#738091]">{rec.selections_count} legs</span>
+                                        <span className={`font-medium ${rec.risk_level === 'STABLE' || rec.risk_level === 'LOW' ? 'text-emerald-400' : rec.risk_level === 'CRITICAL' ? 'text-red-400' : 'text-yellow-400'}`}>
+                                            {rec.risk_level || '—'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Market Anomalies Sidebar */}
-                <div className="glass-hud rounded overflow-hidden flex flex-col min-h-0">
+                <div className="glass-hud rounded overflow-hidden flex flex-col min-h-0 max-h-[280px] md:max-h-none">
                     <div className="px-5 py-4 border-b border-white/5 bg-[#151A22] flex justify-between items-center shrink-0">
                         <h3 className="text-[11px] font-medium text-white tracking-wide uppercase">Detected Inefficiencies</h3>
+                        <span className="text-[9px] text-[#738091] border border-white/10 rounded px-1.5 py-0.5 uppercase tracking-wide">Preview</span>
                     </div>
 
                     <div className="flex-1 overflow-y-auto w-full">
-                        <table className="w-full text-left border-collapse">
-                            <tbody className="divide-y divide-white/5">
-                                {[
-                                    { title: 'O 0.5->2.5', match: 'ARS vs CHE', odds: '+12.5%', color: 'text-emerald-400', sport: 'EPL' },
-                                    { title: 'AH Shift', match: 'RMA vs MCI', odds: 'CRIT', color: 'text-red-400', sport: 'UCL' },
-                                    { title: 'BTTS HT', match: 'BAY vs JUV', odds: '+8.2%', color: 'text-emerald-400', sport: 'UCL' },
-                                    { title: 'Home DNB', match: 'INT vs NAP', odds: '+4.1%', color: 'text-sky-400', sport: 'SERIE_A' },
-                                    { title: 'P U215.5', match: 'LAL vs PHX', odds: 'ERR', color: 'text-[#738091]', sport: 'NBA' },
-                                    { title: 'Correct Score', match: 'PSG vs MU', odds: '+18.0%', color: 'text-emerald-400', sport: 'UCL' },
-                                ].map((m, i) => (
-                                    <tr key={i} className="hover:bg-white/[0.02] cursor-pointer transition-colors">
-                                        <td className="px-5 py-3">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-[10px] text-[#738091] font-medium uppercase tracking-wide">{m.sport}</span>
-                                                <h4 className="text-[11px] font-medium text-white tracking-tight">{m.title}</h4>
-                                            </div>
-                                            <div className="text-[11px] text-[#738091]">{m.match}</div>
-                                        </td>
-                                        <td className={`px-5 py-3 text-right text-[11px] font-data font-medium ${m.color}`}>
-                                            {m.odds}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        {sidebarWarnings.length > 0 ? (
+                            <table className="w-full text-left border-collapse">
+                                <tbody className="divide-y divide-white/5">
+                                    {sidebarWarnings.map((w, i) => (
+                                        <tr key={i} className="hover:bg-white/[0.02] cursor-pointer transition-colors">
+                                            <td className="px-5 py-3">
+                                                <div className="text-[11px] text-yellow-400 font-medium">{w.code}</div>
+                                                <div className="text-[11px] text-[#738091] mt-0.5">{w.message}</div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : showArbWindows && arbWindows.length > 0 ? (
+                            <table className="w-full text-left border-collapse">
+                                <tbody className="divide-y divide-white/5">
+                                    {arbWindows.map((arb, i) => (
+                                        <tr key={i} className="hover:bg-white/[0.02] cursor-pointer transition-colors">
+                                            <td className="px-5 py-3">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[10px] text-[#738091] font-medium uppercase tracking-wide">{arb.match_id}</span>
+                                                </div>
+                                                <div className="text-[11px] text-[#738091]">{arb.teams}</div>
+                                            </td>
+                                            <td className="px-5 py-3 text-right text-[11px] font-data font-medium text-emerald-400">
+                                                +{(arb.profit_margin * 100).toFixed(1)}%
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="px-5 py-4 text-[11px] text-[#738091]">No anomalies detected.</div>
+                        )}
                     </div>
                 </div>
             </div>

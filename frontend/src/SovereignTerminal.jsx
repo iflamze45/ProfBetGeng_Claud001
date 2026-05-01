@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import CommandCenter from './components/CommandCenter';
 import MatrixConvert from './components/MatrixConvert';
 import GovernanceHUD from './components/GovernanceHUD';
@@ -13,27 +13,11 @@ import {
 } from './components/OperationalModules';
 import { Globe, Cpu, Zap, Share2, Terminal, Shield, Ghost, Activity, Gavel, Mic, CircleDot, Clock } from 'lucide-react';
 import { useSovereignState } from './hooks/useSovereignState';
-import { useApiKey } from './hooks/useApiKey';
-import { getMarketSignals } from './api/pbgClient';
 
 function LivePulseFooter() {
-    const { apiKey } = useApiKey();
     const { recentEvents } = useSovereignState();
-    const [signals, setSignals] = useState([]);
 
-    useEffect(() => {
-        if (!apiKey) return;
-        getMarketSignals(apiKey)
-            .then(d => setSignals(d.signals || []))
-            .catch(() => {});
-    }, [apiKey]);
-
-    // Build ticker: live WS events first, then market signals from REST
-    const eventItems = recentEvents.map(e => e.label);
-    const signalItems = signals.map(s =>
-        `${s.signal_type} · ${s.market} · ${s.teams} · +${(s.value_score * 100).toFixed(1)}%`
-    );
-    const items = [...eventItems, ...signalItems];
+    const items = recentEvents.map(e => e.label);
 
     return (
         <div className="bg-[#151A22] border-t border-white/10 p-1.5 flex items-center justify-between z-10 sticky bottom-0 overflow-hidden font-sans">

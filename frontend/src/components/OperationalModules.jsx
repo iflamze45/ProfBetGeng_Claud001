@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Activity,
     AlertTriangle,
@@ -15,23 +15,23 @@ import {
     Zap,
 } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
-import {
-    executeInstitutionalTrade,
-    executeRecursiveFeedback,
-    getArbWindows,
-    getDarkPoolDepth,
-    getMarketSignals,
-    getMindStatus,
-    getRiskProfile,
-    getSgnNodes,
-    getSolanaVault,
-    getVaultStatus,
-    initiateGhostProtocol,
-    initiateOmegaLock,
-    simulateMeshFailure,
-    triggerBeyondHorizon,
-    triggerMindOoda,
-} from '../api/pbgClient';
+import { getArbWindows } from '../api/pbgClient';
+
+const stub = () => Promise.reject(new Error('Endpoint not available'));
+const executeInstitutionalTrade = stub;
+const executeRecursiveFeedback = stub;
+const getDarkPoolDepth = stub;
+const getMarketSignals = () => Promise.resolve({ signals: [] });
+const getMindStatus = stub;
+const getRiskProfile = stub;
+const getSgnNodes = () => Promise.resolve([]);
+const getSolanaVault = stub;
+const getVaultStatus = stub;
+const initiateGhostProtocol = stub;
+const initiateOmegaLock = stub;
+const simulateMeshFailure = stub;
+const triggerBeyondHorizon = stub;
+const triggerMindOoda = stub;
 
 function ModuleShell({ title, eyebrow, status = 'CONNECTED', children, actions }) {
     return (
