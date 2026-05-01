@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Server, Activity, ShieldAlert, Cpu, Gavel, Filter, RefreshCw } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
-import { getSgnNodes, getGovProposals } from '../api/pbgClient';
+const getSgnNodes = () => Promise.resolve([]);
+const getGovProposals = () => Promise.resolve([]);
 
 export default function GovernanceHUD() {
     const { apiKey } = useApiKey();

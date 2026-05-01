@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, BarChart3, Zap, AlertTriangle, ChevronRight, ArrowRight, RefreshCw, Clock } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
-import { getMarketSignals, getArbWindows } from '../api/pbgClient';
+import { getArbWindows } from '../api/pbgClient';
 
 export default function CommandCenter() {
     const { apiKey } = useApiKey();
@@ -11,34 +11,21 @@ export default function CommandCenter() {
     useEffect(() => {
         if (!apiKey) return;
         setLoading(true);
-        Promise.all([
-            getMarketSignals(apiKey).catch(() => ({ signals: [] })),
-            getArbWindows({ apiKey }).catch(() => ({ windows: [] })),
-        ]).then(([sigData, arbData]) => {
-            const sigItems = (sigData.signals || []).map((s, i) => ({
-                id: String(i + 1),
-                sport: s.market?.includes('GOALS') || s.market?.includes('BTTS') ? 'Football' : 'Soccer',
-                market: s.market,
-                teams: s.teams,
-                status: s.value_score > 0.15 ? 'VH_ALPHA' : s.value_score > 0.08 ? 'ALPHA' : 'H_BETA',
-                confidence: Math.min(99.9, 70 + s.value_score * 200).toFixed(2),
-                gap: `+${(s.value_score * 100).toFixed(1)}%`,
-                time: new Date(s.timestamp).toLocaleTimeString(),
-                isCritical: s.value_score > 0.2,
-            }));
-            const arbItems = (arbData.windows || []).map((a, i) => ({
-                id: `A${i + 1}`,
-                sport: 'Arb',
-                market: a.teams,
-                teams: a.teams,
-                status: 'CRITICAL',
-                confidence: ((1 - 1 / (1 + a.profit_margin)) * 100 + 90).toFixed(2),
-                gap: `+${(a.profit_margin * 100).toFixed(1)}%`,
-                time: 'live',
-                isCritical: true,
-            }));
-            setSignals([...sigItems, ...arbItems]);
-        }).finally(() => setLoading(false));
+        getArbWindows({ apiKey }).catch(() => ({ windows: [] }))
+            .then((arbData) => {
+                const arbItems = (arbData.windows || []).map((a, i) => ({
+                    id: `A${i + 1}`,
+                    sport: 'Arb',
+                    market: a.teams,
+                    teams: a.teams,
+                    status: 'CRITICAL',
+                    confidence: ((1 - 1 / (1 + a.profit_margin)) * 100 + 90).toFixed(2),
+                    gap: `+${(a.profit_margin * 100).toFixed(1)}%`,
+                    time: 'live',
+                    isCritical: true,
+                }));
+                setSignals(arbItems);
+            }).finally(() => setLoading(false));
     }, [apiKey]);
 
     const stats = [

@@ -25,6 +25,26 @@ jobs:
       - name: Run tests
         run: python -m pytest backend/tests/ -v
 
+  frontend-e2e:
+    name: Frontend E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+      - name: Build backend stub (for E2E)
+        run: echo "Using mocked API routes in Playwright tests"
+      - name: Run E2E tests
+        working-directory: frontend
+        run: npx playwright test
+
   docker-build:
     name: Docker Build Check
     runs-on: ubuntu-latest

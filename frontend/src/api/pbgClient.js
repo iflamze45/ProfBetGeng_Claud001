@@ -26,14 +26,6 @@ export function getOddsWebSocketUrl() {
   return `${protocol}//${host}/api/v1/ws/odds`;
 }
 
-export async function parseRawText({ apiKey, rawText }) {
-  return request('/api/v1/parse-ticket', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey },
-    body: JSON.stringify({ raw_text: rawText }),
-  })
-}
-
 export async function convertTicket({ apiKey, bookingCode, stake, selections, includeAnalysis = false }) {
   return request('/api/v1/convert', {
     method: 'POST',
@@ -103,136 +95,8 @@ export async function convertBatch({ apiKey, tickets }) {
   })
 }
 
-export async function executeInstitutionalTrade({ apiKey, marketId, amountUsd }) {
-  return request('/api/v1/institutional/execute', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey },
-    body: JSON.stringify({ market_id: marketId, amount_usd: amountUsd }),
-  })
-}
-
-export async function initiateGhostProtocol({ apiKey }) {
-  return request('/api/v1/ghost/initiate', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey }
-  })
-}
-
 export async function getArbWindows({ apiKey }) {
   return request('/api/v1/quant/arbs', {
     headers: { 'X-API-Key': apiKey }
-  })
-}
-
-export async function getDarkPoolDepth({ apiKey, marketId }) {
-  return request(`/api/v1/institutional/depth/${marketId}`, {
-    headers: { 'X-API-Key': apiKey }
-  })
-}
-
-export async function executeTreasuryRebalance({ apiKey }) {
-  return request('/api/v1/treasury/rebalance', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey }
-  })
-}
-
-export async function executeTreasuryFlatten({ apiKey }) {
-  return request('/api/v1/treasury/flatten', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey }
-  })
-}
-
-export async function initiateOmegaLock({ apiKey }) {
-  return request('/api/v1/singularity/omega-lock', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey }
-  })
-}
-
-export async function executeRecursiveFeedback({ apiKey }) {
-  return request('/api/v1/singularity/recursive-feedback', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey }
-  })
-}
-
-export async function executeGovernanceVote({ apiKey, proposalId, voterName, voteType }) {
-  return request('/api/v1/gov/vote', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey },
-    body: JSON.stringify({ proposal_id: proposalId, voter_name: voterName, vote_type: voteType })
-  })
-}
-
-export async function executeGovernanceProposal({ apiKey, proposalId }) {
-  return request(`/api/v1/gov/execute/${proposalId}`, {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey }
-  })
-}
-
-export async function simulateMeshFailure({ apiKey, nodeId }) {
-  return request('/api/v1/mesh/simulate-failure', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey },
-    body: JSON.stringify({ node_id: nodeId })
-  })
-}
-
-export async function getMarketSignals(apiKey) {
-  return request('/api/v1/market/signals', {
-    headers: { 'X-API-Key': apiKey },
-  })
-}
-
-export async function getRiskProfile(apiKey) {
-  return request('/api/v1/quant/risk', {
-    headers: { 'X-API-Key': apiKey },
-  })
-}
-
-export async function getSolanaVault(apiKey) {
-  return request('/api/v1/solana/vault', {
-    headers: { 'X-API-Key': apiKey },
-  })
-}
-
-export async function getVaultStatus(apiKey) {
-  return request('/api/v1/vault/status', {
-    headers: { 'X-API-Key': apiKey },
-  })
-}
-
-export async function getSgnNodes(apiKey) {
-  return request('/api/v1/sgn/nodes', {
-    headers: { 'X-API-Key': apiKey },
-  })
-}
-
-export async function getMindStatus(apiKey) {
-  return request('/api/v1/mind/status', {
-    headers: { 'X-API-Key': apiKey },
-  })
-}
-
-export async function triggerMindOoda(apiKey) {
-  return request('/api/v1/mind/ooda', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey },
-  })
-}
-
-export async function getGovProposals(apiKey) {
-  return request('/api/v1/gov/proposals', {
-    headers: { 'X-API-Key': apiKey },
-  })
-}
-
-export async function triggerBeyondHorizon(apiKey) {
-  return request('/api/v1/singularity/beyond-horizon', {
-    method: 'POST',
-    headers: { 'X-API-Key': apiKey },
   })
 }
