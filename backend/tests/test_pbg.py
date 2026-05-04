@@ -324,11 +324,14 @@ class TestRoutes:
         assert "records" in r.json()
 
     def test_create_api_key(self, client):
-        r = client.post(
-            "/api/v1/keys", 
-            json={"label": "test-key", "owner": "commander"},
-            headers={"X-Admin-Token": "pbg_admin_secret"}
-        )
+        from unittest.mock import patch, MagicMock
+        mock_settings = MagicMock(admin_token="pbg_admin_secret", auth_enabled=True, batch_enabled=False)
+        with patch("backend.routes.get_settings", return_value=mock_settings):
+            r = client.post(
+                "/api/v1/keys",
+                json={"label": "test-key", "owner": "commander"},
+                headers={"X-Admin-Token": "pbg_admin_secret"}
+            )
         assert r.status_code == 200
         assert "key" in r.json()
 

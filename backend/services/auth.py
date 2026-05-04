@@ -53,11 +53,14 @@ class APIKeyService:
         }
 
     def validate_key(self, key: str) -> bool:
-        key_hash = hashlib.sha256(key.encode()).hexdigest()
-        result = self.supabase.table("api_keys").select("is_active").eq(
-            "key_hash", key_hash
-        ).maybe_single().execute()
-        return bool(result.data and result.data.get("is_active"))
+        try:
+            key_hash = hashlib.sha256(key.encode()).hexdigest()
+            result = self.supabase.table("api_keys").select("is_active").eq(
+                "key_hash", key_hash
+            ).maybe_single().execute()
+            return bool(result.data and result.data.get("is_active"))
+        except Exception:
+            return False
 
 
 class MockAPIKeyService:
