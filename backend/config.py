@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     # Anthropic
     anthropic_api_key: str = ""
 
+    # Sentry error monitoring (optional — disabled if DSN is absent)
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.1
+
     # Langfuse observability (optional — tracing disabled if keys are absent)
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
