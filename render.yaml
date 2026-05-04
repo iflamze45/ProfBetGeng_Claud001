@@ -3,6 +3,7 @@ services:
     name: profbetgeng-api
     runtime: docker
     plan: free
+    autoDeploy: true
     dockerfilePath: ./Dockerfile
     envVars:
       - key: ENVIRONMENT
