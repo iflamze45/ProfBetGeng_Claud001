@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from .models import (
     ConvertedTicket, SportybetTicket, ConversionRecord,
     APIKeyCreate, APIKeyResponse,
-    ConvertRequest, ConvertResponse,
+    ConvertRequest, ConvertResponse, CompositeAnalysis,
 )
 from .services.sportybet_parser import SportybetAdapter
 from .services.converter import Bet9jaConverter
@@ -19,6 +19,8 @@ from .services.pbg_streaming_protocol import live_odds_manager
 from .services.auth import APIKeyService, MockAPIKeyService, require_api_key
 from .services.storage import SupabaseStorageService, MockStorageService
 from .services.ticket_pulse import TicketPulseService, MockTicketPulseService, RiskReport
+from .services.risk_engine import RiskEngine
+from .services.sentiment import SentimentAnalysisService
 from .services.supabase_client import get_supabase_client
 from .config import get_settings
 from .batch import BatchConvertRequest, BatchConvertResponse, BatchTicketResult, BatchSummary
@@ -41,6 +43,11 @@ def get_storage_service():
 def get_pulse_service():
     settings = get_settings()
     return TicketPulseService() if settings.anthropic_api_key else MockTicketPulseService()
+
+
+def get_sentiment_service():
+    settings = get_settings()
+    return SentimentAnalysisService(api_key=settings.anthropic_api_key or None)
 
 
 def persist_conversion(storage_service, record: ConversionRecord):
@@ -81,6 +88,7 @@ async def convert_ticket(
     auth_service=Depends(get_auth_service),
     storage_service=Depends(get_storage_service),
     pulse_service=Depends(get_pulse_service),
+    sentiment_service=Depends(get_sentiment_service),
 ):
     settings = get_settings()
     if settings.auth_enabled and api_key != "dev_bypass":
@@ -95,9 +103,22 @@ async def convert_ticket(
     internal_ticket, _ = parser.parse(sportybet_ticket)
     converted = converter.convert(internal_ticket)
 
-    analysis = None
+    pulse_result = None
+    metrics_result = None
+    sentiment_result = None
+
     if request.include_analysis:
-        analysis = await pulse_service.analyse(converted, language=request.language)
+        metrics_result = RiskEngine.compute(converted)
+        pulse_result, sentiment_result = await asyncio.gather(
+            pulse_service.analyse(converted, language=request.language),
+            sentiment_service.analyse(converted),
+        )
+
+    composite = CompositeAnalysis(
+        pulse=pulse_result,
+        metrics=metrics_result,
+        sentiment=sentiment_result,
+    )
 
     record = ConversionRecord(
         api_key=api_key,
@@ -110,8 +131,8 @@ async def convert_ticket(
         stake=request.stake,
         total_odds=internal_ticket.total_odds,
         potential_returns=internal_ticket.potential_returns,
-        risk_score=analysis.score if analysis else None,
-        risk_level=analysis.level if analysis else None,
+        risk_score=pulse_result.score if pulse_result else None,
+        risk_level=pulse_result.level if pulse_result else None,
     )
     background_tasks.add_task(persist_conversion, storage_service, record)
 
@@ -127,7 +148,7 @@ async def convert_ticket(
     return ConvertResponse(
         success=True,
         converted=converted,
-        analysis={"pulse": analysis},
+        analysis=composite,
     )
 
 

@@ -224,11 +224,20 @@ class ConvertRequest(BaseModel):
     language: str = "en"
 
 
+class CompositeAnalysis(BaseModel):
+    """Triad of analysis signals returned with every converted ticket."""
+    model_config = {"arbitrary_types_allowed": True}
+
+    pulse: Optional[Any] = None      # RiskReport from TicketPulseService
+    metrics: Optional[Any] = None    # RiskMetrics from RiskEngine
+    sentiment: Optional[Any] = None  # SentimentReport from SentimentAnalysisService
+
+
 class ConvertResponse(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     success: bool
     converted: Optional[ConvertedTicket] = None
-    analysis: Optional[Any] = None
+    analysis: Optional[CompositeAnalysis] = None
     sentiment: Optional[dict] = None
     error: Optional[str] = None

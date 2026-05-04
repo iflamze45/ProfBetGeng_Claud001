@@ -4,7 +4,10 @@ Parses raw SportyBet selections into normalized InternalTicket.
 Returns (InternalTicket, list[StructuredWarning]) — never raises on soft failures.
 """
 import re
+import logging
 from typing import Protocol, Optional
+
+logger = logging.getLogger(__name__)
 from ..models import (
     SportybetTicket, InternalTicket, NormalizedSelection,
     StructuredWarning, UnresolvedSummary, ResponseMeta, MarketType

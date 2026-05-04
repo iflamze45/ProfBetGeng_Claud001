@@ -1,10 +1,27 @@
 import json
 import httpx
+from contextlib import nullcontext
 from enum import Enum
 from typing import Optional, AsyncGenerator
 from pydantic import BaseModel, Field
 from ..models import ConvertedTicket
 from ..config import get_settings
+
+
+def _get_langfuse():
+    """Returns a configured Langfuse client, or None if tracing is not set up."""
+    settings = get_settings()
+    if not settings.langfuse_public_key or not settings.langfuse_secret_key:
+        return None
+    try:
+        from langfuse import Langfuse
+        return Langfuse(
+            public_key=settings.langfuse_public_key,
+            secret_key=settings.langfuse_secret_key,
+            host=settings.langfuse_host,
+        )
+    except Exception:
+        return None
 
 
 
@@ -128,49 +145,86 @@ def _heuristic_score(ticket: ConvertedTicket, language: str) -> RiskReport:
 
 
 class TicketPulseService:
-    MODEL = "claude-sonnet-4-20250514"
+    MODEL = "claude-sonnet-4-6"
     TIMEOUT = 10.0
 
     async def analyse(self, ticket: ConvertedTicket, language: str = "en") -> RiskReport:
         settings = get_settings()
         if not settings.anthropic_api_key:
             return _heuristic_score(ticket, language)
+
+        lf = _get_langfuse()
+        prompt = _build_prompt(ticket, language)
+
+        outer_ctx = lf.start_as_current_observation(
+            name="ticket-pulse",
+            as_type="agent",
+            input={"booking_code": ticket.source_booking_code, "language": language},
+            metadata={"converted": ticket.converted_count, "skipped": ticket.skipped_count},
+        ) if lf else nullcontext()
+
+        inner_ctx = lf.start_as_current_observation(
+            name="claude-risk-analysis",
+            as_type="generation",
+            model=self.MODEL,
+            input=[{"role": "user", "content": prompt}],
+        ) if lf else nullcontext()
+
         try:
-            async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
-                response = await client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": settings.anthropic_api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json"
-                    },
-                    json={
-                        "model": self.MODEL,
-                        "max_tokens": 1024,
-                        "messages": [{"role": "user", "content": _build_prompt(ticket, language)}]
-                    }
-                )
-                response.raise_for_status()
-                data = response.json()
-                raw = data["content"][0]["text"].strip()
-                if raw.startswith("```"):
-                    raw = raw.split("```")[1]
-                    if raw.startswith("json"):
-                        raw = raw[4:]
-                raw = raw.strip()
-                parsed = json.loads(raw)
-                return RiskReport(
-                    score=parsed["score"],
-                    level=RiskLevel(parsed["level"]),
-                    flags=[RiskFlag(**f) for f in parsed.get("flags", [])],
-                    narrative=parsed["narrative"],
-                    language=language,
-                    source="ai",
-                    model=self.MODEL
-                )
+            with outer_ctx:
+                with inner_ctx as gen:
+                    async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
+                        response = await client.post(
+                            "https://api.anthropic.com/v1/messages",
+                            headers={
+                                "x-api-key": settings.anthropic_api_key,
+                                "anthropic-version": "2023-06-01",
+                                "content-type": "application/json",
+                            },
+                            json={
+                                "model": self.MODEL,
+                                "max_tokens": 1024,
+                                "messages": [{"role": "user", "content": prompt}],
+                            },
+                        )
+                        response.raise_for_status()
+                        data = response.json()
+                        raw = data["content"][0]["text"].strip()
+
+                        if gen is not None:
+                            usage = data.get("usage", {})
+                            gen.update(
+                                output=raw,
+                                usage_details={
+                                    "input": usage.get("input_tokens", 0),
+                                    "output": usage.get("output_tokens", 0),
+                                },
+                            )
+
+                    if raw.startswith("```"):
+                        raw = raw.split("```")[1]
+                        if raw.startswith("json"):
+                            raw = raw[4:]
+                    raw = raw.strip()
+                    parsed = json.loads(raw)
+                    report = RiskReport(
+                        score=parsed["score"],
+                        level=RiskLevel(parsed["level"]),
+                        flags=[RiskFlag(**f) for f in parsed.get("flags", [])],
+                        narrative=parsed["narrative"],
+                        language=language,
+                        source="ai",
+                        model=self.MODEL,
+                    )
+            if lf:
+                lf.flush()
+            return report
+
         except (httpx.TimeoutException, httpx.HTTPStatusError, json.JSONDecodeError, KeyError):
             report = _heuristic_score(ticket, language)
             report.source = "heuristic_fallback"
+            if lf:
+                lf.flush()
             return report
 
     async def analyse_stream(self, ticket: ConvertedTicket, language: str = "en") -> AsyncGenerator[str, None]:
@@ -242,7 +296,7 @@ class MatchPulseIngester:
     def get_pulse_status(self) -> dict:
         return {
             "active_matches": len(self.active_telemetry),
-            "telemetry": {k: v.dict() for k, v in self.active_telemetry.items()}
+            "telemetry": {k: v.model_dump() for k, v in self.active_telemetry.items()}
         }
 
 # Global instance

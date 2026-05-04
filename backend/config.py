@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # Anthropic
     anthropic_api_key: str = ""
 
+    # Langfuse observability (optional — tracing disabled if keys are absent)
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "http://localhost:3000"
+
     # Live Data APIs
     the_odds_api_key: str = ""
 
