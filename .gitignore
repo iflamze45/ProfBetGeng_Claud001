@@ -116,7 +116,6 @@ backend/services/rate_limiter.py
 backend/services/replication_module.py
 backend/services/risk_analytics.py
 backend/services/risk_oracle.py
-backend/services/sentiment.py
 backend/services/settlement_layer.py
 backend/services/singularity_engine.py
 backend/services/social_oracle.py
