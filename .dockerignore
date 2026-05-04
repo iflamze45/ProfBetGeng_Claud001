@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+venv/
+.venv/
+dist/
+build/
+
+# Secrets — never bake into the image
+backend/.env
+.env
+*.env
+
+# Tests — not needed at runtime
+backend/tests/
+conftest.py
+pytest.ini
+.pytest_cache/
+coverage.xml
+.coverage
+
+# Dev tooling
+.agent/
+.ruff_cache/
+.mypy_cache/
+
+# Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
