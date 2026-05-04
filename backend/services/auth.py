@@ -55,10 +55,20 @@ class APIKeyService:
     def validate_key(self, key: str) -> bool:
         try:
             key_hash = hashlib.sha256(key.encode()).hexdigest()
-            result = self.supabase.table("api_keys").select("is_active").eq(
-                "key_hash", key_hash
-            ).maybe_single().execute()
-            return bool(result.data and result.data.get("is_active"))
+            result = self.supabase.table("api_keys").select(
+                "key_id, is_active, request_count"
+            ).eq("key_hash", key_hash).maybe_single().execute()
+            if not (result.data and result.data.get("is_active")):
+                return False
+            # Best-effort usage tracking — never fails the request
+            try:
+                self.supabase.table("api_keys").update({
+                    "request_count": (result.data.get("request_count") or 0) + 1,
+                    "last_used_at": datetime.now(timezone.utc).isoformat(),
+                }).eq("key_id", result.data["key_id"]).execute()
+            except Exception:
+                pass
+            return True
         except Exception:
             return False
 
