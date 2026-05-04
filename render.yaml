@@ -2,7 +2,7 @@ services:
   - type: web
     name: profbetgeng-api
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile
     envVars:
       - key: ENVIRONMENT
