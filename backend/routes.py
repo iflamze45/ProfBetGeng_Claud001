@@ -18,6 +18,9 @@ from .services.syndicate_service import SyndicateService, MockSyndicateService
 from .services.risk_analytics_service import RiskAnalyticsService, PortfolioRiskMetrics
 from .services.clv_service import CLVService, CLVReport as CLVReportModel
 from .services.value_discovery_service import ValueDiscoveryService, MarketSignal
+from .services.bankroll_service import BankrollService, KellyRecommendation
+from .services.alpha_service import AlphaService
+from .services.strategy_service import StrategyService
 from .services.whale_tracker_service import WhaleTrackerService
 from .services.converter import Bet9jaConverter
 from .services.pbg_streaming_protocol import live_odds_manager
@@ -381,24 +384,22 @@ async def get_mesh_nodes(_: str = Depends(require_api_key)):
 
 
 @router.get("/api/v1/quant/arbs")
-async def get_arb_windows(_: str = Security(require_api_key)):
+async def get_arb_windows(
+    limit: int = Query(5, ge=1, le=20),
+    _: str = Security(require_api_key),
+):
     """Retrieve multi-market arbitrage windows."""
-    mock_arbs = [
-        {
-            "match_id": "ARB_772",
-            "teams": "Arsenal vs Chelsea",
-            "profit_margin": 0.042,
-            "outcomes": {"1": 2.15, "X": 3.45, "2": 4.80},
-            "bookmakers": {"1": "SportyBet", "X": "Bet9ja", "2": "Pinnacle"},
-        }
-    ]
-    return {"windows": mock_arbs}
+    windows = _strategy_service.get_arb_windows(limit=limit)
+    return {"windows": [w.model_dump() for w in windows]}
 
 
 _risk_service = RiskAnalyticsService()
 _clv_service = CLVService()
 _discovery_service = ValueDiscoveryService()
 _whale_service = WhaleTrackerService()
+_bankroll_service = BankrollService()
+_alpha_service = AlphaService()
+_strategy_service = StrategyService()
 
 
 @router.get("/api/v1/analytics/risk", response_model=PortfolioRiskMetrics)
@@ -434,6 +435,26 @@ async def get_whale_pulses(
 ):
     pulses = _whale_service.get_pulses(limit=limit)
     return {"pulses": [p.model_dump() for p in pulses], "count": len(pulses)}
+
+
+@router.get("/api/v1/alpha/signals")
+async def get_alpha_signals(
+    limit: int = Query(10, ge=1, le=20),
+    _: str = Depends(require_api_key),
+):
+    frames = _alpha_service.get_frames(limit=limit)
+    return {"frames": [f.model_dump() for f in frames], "count": len(frames)}
+
+
+@router.get("/api/v1/bankroll/size", response_model=KellyRecommendation)
+async def get_bankroll_size(
+    bankroll: float = Query(..., gt=0, description="Current bankroll amount"),
+    p_win: float = Query(..., gt=0, le=1, description="Estimated win probability"),
+    odds: float = Query(..., gt=1, description="Decimal odds"),
+    venue: str = Query("SportyBet", description="Bookmaker venue"),
+    _: str = Depends(require_api_key),
+):
+    return _bankroll_service.get_recommendation(bankroll, p_win, odds, venue)
 
 
 @router.get("/api/v1/signals")
