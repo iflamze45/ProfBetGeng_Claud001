@@ -10,7 +10,7 @@ from ..services.admin_service import MockAdminService
 
 
 VALID_ADMIN_TOKEN = get_settings().admin_token
-INVALID_ADMIN_TOKEN = "wrong_token"
+INVALID_ADMIN_TOKEN = VALID_ADMIN_TOKEN + "_invalid"
 
 SEED_KEYS = [
     {

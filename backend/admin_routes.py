@@ -1,5 +1,5 @@
 """
-PBG Admin Routes — key management endpoints (v0.7.0).
+PBG Admin Routes — key management and analytics endpoints (v0.7.0–v0.7.1).
 All endpoints gated by X-Admin-Token header.
 """
 import logging
@@ -75,3 +75,11 @@ async def patch_key(
     if result is None:
         raise HTTPException(status_code=404, detail="Key not found")
     return result
+
+
+@admin_router.get("/api/v1/admin/analytics")
+async def get_analytics(
+    _: None = Depends(_require_admin),
+    admin_service=Depends(get_admin_service),
+):
+    return admin_service.get_analytics()
