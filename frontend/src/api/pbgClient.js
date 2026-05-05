@@ -100,3 +100,27 @@ export async function getArbWindows({ apiKey }) {
     headers: { 'X-API-Key': apiKey }
   })
 }
+
+function adminHeaders() {
+  const token = import.meta.env.VITE_ADMIN_TOKEN || 'pbg_admin_secret'
+  return { 'X-Admin-Token': token }
+}
+
+export async function adminListKeys() {
+  return request('/api/v1/admin/keys', { headers: adminHeaders() })
+}
+
+export async function adminDeactivateKey(keyId) {
+  return request(`/api/v1/admin/keys/${keyId}`, {
+    method: 'DELETE',
+    headers: adminHeaders(),
+  })
+}
+
+export async function adminPatchKey(keyId, updates) {
+  return request(`/api/v1/admin/keys/${keyId}`, {
+    method: 'PATCH',
+    headers: adminHeaders(),
+    body: JSON.stringify(updates),
+  })
+}

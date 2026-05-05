@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import CommandCenter from './components/CommandCenter';
 import MatrixConvert from './components/MatrixConvert';
 import GovernanceHUD from './components/GovernanceHUD';
+import KeyManagement from './components/KeyManagement';
 import {
     ExecutionModule,
     GhostModule,
@@ -11,7 +12,7 @@ import {
     SingularityModule,
     TreasuryModule,
 } from './components/OperationalModules';
-import { Globe, Cpu, Zap, Share2, Terminal, Shield, Ghost, Activity, Gavel, Mic, CircleDot, Clock } from 'lucide-react';
+import { Globe, Cpu, Zap, Share2, Terminal, Shield, Ghost, Activity, Gavel, Mic, CircleDot, Clock, KeyRound } from 'lucide-react';
 import { useSovereignState } from './hooks/useSovereignState';
 
 function LivePulseFooter() {
@@ -66,6 +67,7 @@ export default function SovereignTerminal() {
             case 'mesh': return <MeshModule />;
             case 'singularity': return <SingularityModule />;
             case 'governance': return <GovernanceHUD />;
+            case 'keys': return <KeyManagement />;
             default: return <CommandCenter />;
         }
     };
@@ -80,7 +82,8 @@ export default function SovereignTerminal() {
         { id: 'oracle', label: 'INSTITUTIONAL_ORACLE', icon: Share2 },
         { id: 'execution', label: 'EXECUTION_SEA', icon: Activity },
         { id: 'treasury', label: 'SOVEREIGN_WEALTH', icon: Shield },
-        { id: 'ghost', label: 'GHOST_PROTOCOL', icon: Ghost }
+        { id: 'ghost', label: 'GHOST_PROTOCOL', icon: Ghost },
+        { id: 'keys', label: 'KEY_MANAGEMENT', icon: KeyRound },
     ];
 
     return (

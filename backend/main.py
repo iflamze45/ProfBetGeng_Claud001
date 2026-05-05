@@ -18,6 +18,7 @@ from slowapi.middleware import SlowAPIMiddleware
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 from .routes import router
+from .admin_routes import admin_router
 from .config import get_settings
 from .services.pbg_streaming_protocol import LiveOddsEngine, live_odds_manager
 
@@ -80,6 +81,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
+    app.include_router(admin_router)
     return app
 
 
