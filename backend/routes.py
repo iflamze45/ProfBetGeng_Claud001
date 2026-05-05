@@ -1,9 +1,9 @@
 import asyncio
 import uuid as _uuid
 import datetime as _datetime
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Security, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, Security, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
@@ -15,6 +15,8 @@ from .models import (
 )
 from .services.sportybet_parser import SportybetAdapter
 from .services.syndicate_service import SyndicateService, MockSyndicateService
+from .services.risk_analytics_service import RiskAnalyticsService, PortfolioRiskMetrics
+from .services.clv_service import CLVService, CLVReport as CLVReportModel
 from .services.converter import Bet9jaConverter
 from .services.pbg_streaming_protocol import live_odds_manager
 from .services.auth import APIKeyService, MockAPIKeyService, require_api_key
@@ -380,6 +382,36 @@ async def get_arb_windows(_: str = Security(require_api_key)):
         }
     ]
     return {"windows": mock_arbs}
+
+
+_risk_service = RiskAnalyticsService()
+_clv_service = CLVService()
+
+
+@router.get("/api/v1/analytics/risk", response_model=PortfolioRiskMetrics)
+async def get_risk_metrics(
+    returns: str = Query(..., description="Comma-separated list of percentage returns"),
+    _: str = Depends(require_api_key),
+):
+    try:
+        parsed: List[float] = [float(v.strip()) for v in returns.split(",") if v.strip()]
+    except ValueError:
+        raise HTTPException(status_code=422, detail="returns must be comma-separated floats")
+    return _risk_service.calculate_metrics(parsed)
+
+
+@router.get("/api/v1/analytics/clv", response_model=CLVReportModel)
+async def get_clv(
+    execution_odds: float = Query(..., description="Odds at time of bet placement"),
+    closing_odds: float = Query(..., description="Final market odds before event start"),
+    match_id: str = Query("unknown", description="Optional match identifier"),
+    _: str = Depends(require_api_key),
+):
+    return _clv_service.compute_clv(
+        execution_odds=execution_odds,
+        closing_odds=closing_odds,
+        match_id=match_id,
+    )
 
 
 @router.websocket("/api/v1/ws/odds")
