@@ -113,6 +113,19 @@ export async function getWhaleSignals(apiKey, { limit = 10 } = {}) {
   })
 }
 
+export async function getNodes(apiKey) {
+  const data = await request('/api/v1/mesh/nodes', { headers: { 'X-API-Key': apiKey } })
+  return data.nodes || []
+}
+
+// Uses existing analytics/risk endpoint with a representative sample of returns
+const _SAMPLE_RETURNS = '0.1,0.05,-0.03,0.08,0.12,-0.07,0.15,0.02,-0.01,0.09'
+export async function getRiskProfile(apiKey) {
+  return request(`/api/v1/analytics/risk?returns=${_SAMPLE_RETURNS}`, {
+    headers: { 'X-API-Key': apiKey }
+  })
+}
+
 function adminHeaders() {
   const token = import.meta.env.VITE_ADMIN_TOKEN || 'pbg_admin_secret'
   return { 'X-Admin-Token': token }

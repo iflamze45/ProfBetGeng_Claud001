@@ -15,13 +15,11 @@ import {
     Zap,
 } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
-import { getArbWindows, getMarketSignals, getWhaleSignals } from '../api/pbgClient';
+import { getArbWindows, getMarketSignals, getWhaleSignals, getNodes, getRiskProfile } from '../api/pbgClient';
 
 const stub = () => Promise.reject(new Error('Endpoint not available'));
 const executeRecursiveFeedback = stub;
 const getMindStatus = stub;
-const getRiskProfile = stub;
-const getSgnNodes = () => Promise.resolve([]);
 const getSolanaVault = stub;
 const getVaultStatus = stub;
 const initiateGhostProtocol = stub;
@@ -308,7 +306,7 @@ export function TreasuryModule() {
 }
 
 export function MeshModule() {
-    const { apiKey, data, loading, error, refresh } = useModuleData(getSgnNodes, []);
+    const { apiKey, data, loading, error, refresh } = useModuleData(getNodes, []);
     const [result, setResult] = useState(null);
     const nodes = Array.isArray(data) ? data : [];
 

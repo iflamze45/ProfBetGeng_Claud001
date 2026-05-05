@@ -371,6 +371,15 @@ async def add_syndicate_ticket(
     return result
 
 
+@router.get("/api/v1/mesh/nodes")
+async def get_mesh_nodes(_: str = Depends(require_api_key)):
+    return {"nodes": [
+        {"id": "NODE_US_EAST", "region": "US-EAST",  "endpoint": "sgn-us-east.pbg.internal",  "latency_ms": 12, "status": "ONLINE"},
+        {"id": "NODE_EU_WEST", "region": "EU-WEST",  "endpoint": "sgn-eu-west.pbg.internal",  "latency_ms": 28, "status": "ONLINE"},
+        {"id": "NODE_AF_LAGO", "region": "AF-LAGOS", "endpoint": "sgn-af-lagos.pbg.internal", "latency_ms": 45, "status": "ONLINE"},
+    ]}
+
+
 @router.get("/api/v1/quant/arbs")
 async def get_arb_windows(_: str = Security(require_api_key)):
     """Retrieve multi-market arbitrage windows."""
