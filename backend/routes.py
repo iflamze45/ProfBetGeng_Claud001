@@ -18,6 +18,7 @@ from .services.syndicate_service import SyndicateService, MockSyndicateService
 from .services.risk_analytics_service import RiskAnalyticsService, PortfolioRiskMetrics
 from .services.clv_service import CLVService, CLVReport as CLVReportModel
 from .services.value_discovery_service import ValueDiscoveryService, MarketSignal
+from .services.whale_tracker_service import WhaleTrackerService
 from .services.converter import Bet9jaConverter
 from .services.pbg_streaming_protocol import live_odds_manager
 from .services.auth import APIKeyService, MockAPIKeyService, require_api_key
@@ -388,6 +389,7 @@ async def get_arb_windows(_: str = Security(require_api_key)):
 _risk_service = RiskAnalyticsService()
 _clv_service = CLVService()
 _discovery_service = ValueDiscoveryService()
+_whale_service = WhaleTrackerService()
 
 
 @router.get("/api/v1/analytics/risk", response_model=PortfolioRiskMetrics)
@@ -414,6 +416,15 @@ async def get_clv(
         closing_odds=closing_odds,
         match_id=match_id,
     )
+
+
+@router.get("/api/v1/analytics/whales")
+async def get_whale_pulses(
+    limit: int = Query(10, ge=1, le=20),
+    _: str = Depends(require_api_key),
+):
+    pulses = _whale_service.get_pulses(limit=limit)
+    return {"pulses": [p.model_dump() for p in pulses], "count": len(pulses)}
 
 
 @router.get("/api/v1/signals")

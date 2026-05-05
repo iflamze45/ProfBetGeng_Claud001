@@ -107,6 +107,12 @@ export async function getMarketSignals(apiKey, { limit = 20 } = {}) {
   })
 }
 
+export async function getWhaleSignals(apiKey, { limit = 10 } = {}) {
+  return request(`/api/v1/analytics/whales?limit=${limit}`, {
+    headers: { 'X-API-Key': apiKey }
+  })
+}
+
 function adminHeaders() {
   const token = import.meta.env.VITE_ADMIN_TOKEN || 'pbg_admin_secret'
   return { 'X-Admin-Token': token }

@@ -15,12 +15,10 @@ import {
     Zap,
 } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
-import { getArbWindows, getMarketSignals } from '../api/pbgClient';
+import { getArbWindows, getMarketSignals, getWhaleSignals } from '../api/pbgClient';
 
 const stub = () => Promise.reject(new Error('Endpoint not available'));
-const executeInstitutionalTrade = stub;
 const executeRecursiveFeedback = stub;
-const getDarkPoolDepth = stub;
 const getMindStatus = stub;
 const getRiskProfile = stub;
 const getSgnNodes = () => Promise.resolve([]);
@@ -250,26 +248,40 @@ export function ExecutionModule() {
 }
 
 export function InstitutionalModule() {
-    const [marketId, setMarketId] = useState('GLOBAL_MARKET_01');
-    const [actionResult, setActionResult] = useState(null);
-    const { apiKey, data, loading, error, refresh } = useModuleData((key) => getDarkPoolDepth({ apiKey: key, marketId }), [marketId]);
+    const { data, loading, error, refresh } = useModuleData((key) => getWhaleSignals(key), []);
 
-    const executeDeal = async () => {
-        setActionResult(await executeInstitutionalTrade({ apiKey, marketId, amountUsd: 50000 }));
-        refresh();
-    };
+    const pulses = data?.pulses || [];
+    const topConfidence = pulses.length > 0 ? `${(pulses[0].confidence_score * 100).toFixed(0)}%` : '—';
+    const totalVolume = pulses.reduce((acc, p) => acc + p.aggregated_volume, 0);
 
-    const depthRows = Object.entries(data || {}).map(([book, amount]) => ({ id: book, book, amount: `$${Number(amount).toLocaleString()}` }));
+    const rows = pulses.map((p) => ({
+        id: p.match_id,
+        match: p.match_id,
+        selection: p.selection,
+        volume: `₦${(p.aggregated_volume / 1_000_000).toFixed(2)}M`,
+        confidence: `${(p.confidence_score * 100).toFixed(0)}%`,
+        nodes: String(p.nodes_reporting),
+    }));
 
     return (
-        <ModuleShell title="Institutional Oracle" eyebrow="Dark-pool depth and wholesale execution bridge" actions={<ActionButton onClick={executeDeal} disabled={!apiKey}><Play className="h-3.5 w-3.5" />Execute Test Fill</ActionButton>}>
-            <div className="flex max-w-sm flex-col gap-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-[#738091]">Market ID</label>
-                <input value={marketId} onChange={(event) => setMarketId(event.target.value)} className="border border-white/10 bg-[#0B0E14] px-4 py-3 font-mono text-[13px] text-white outline-none focus:border-sky-500" />
-            </div>
+        <ModuleShell title="Institutional Oracle" eyebrow="Smart Money volume patterns detected across the SGN Mesh" actions={<ActionButton tone="dark" onClick={refresh}><RefreshCw className="h-3.5 w-3.5" />Refresh</ActionButton>}>
             <StatusLine loading={loading} error={error} />
-            {actionResult && <pre className="overflow-auto border border-emerald-500/30 bg-emerald-500/10 p-4 text-[11px] text-emerald-100">{JSON.stringify(actionResult, null, 2)}</pre>}
-            <DataTable columns={[{ key: 'book', label: 'Counterparty' }, { key: 'amount', label: 'Depth', align: 'right' }]} rows={depthRows} empty="No institutional depth returned" />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <StatCard label="Whale Signals" value={String(pulses.length)} trend="smart money" icon={Activity} tone="text-sky-400" />
+                <StatCard label="Top Confidence" value={topConfidence} trend={pulses[0]?.match_id || '—'} icon={TrendingUp} tone="text-emerald-400" />
+                <StatCard label="Total Volume" value={totalVolume > 0 ? `₦${(totalVolume / 1_000_000).toFixed(1)}M` : '—'} trend="aggregated" icon={Database} tone="text-amber-400" />
+            </div>
+            <DataTable
+                columns={[
+                    { key: 'match', label: 'Match' },
+                    { key: 'selection', label: 'Selection' },
+                    { key: 'volume', label: 'Volume', align: 'right' },
+                    { key: 'confidence', label: 'Confidence', align: 'right' },
+                    { key: 'nodes', label: 'Nodes', align: 'right' },
+                ]}
+                rows={rows}
+                empty="No whale signals detected"
+            />
         </ModuleShell>
     );
 }
