@@ -5,10 +5,11 @@ No external calls — pure math, always synchronous.
 """
 import math
 from collections import Counter
+from typing import List, Optional
 
 from pydantic import BaseModel
 
-from ..models import ConvertedTicket
+from ..models import ConvertedTicket, NormalizedSelection
 
 
 class RiskMetrics(BaseModel):
@@ -19,11 +20,15 @@ class RiskMetrics(BaseModel):
     correlation_exposure: float
     selection_count: int
     avg_odds: float
+    avg_val_gap_score: float = 0.0
 
 
 class RiskEngine:
     @staticmethod
-    def compute(ticket: ConvertedTicket) -> RiskMetrics:
+    def compute(
+        ticket: ConvertedTicket,
+        normalized: Optional[List[NormalizedSelection]] = None,
+    ) -> RiskMetrics:
         odds = [s.odds for s in ticket.selections]
         n = len(odds)
 
@@ -36,6 +41,7 @@ class RiskEngine:
                 correlation_exposure=0.0,
                 selection_count=0,
                 avg_odds=0.0,
+                avg_val_gap_score=0.0,
             )
 
         avg = sum(odds) / n
@@ -72,6 +78,12 @@ class RiskEngine:
         duplicated = sum(c for c in counts.values() if c > 1)
         correlation_exposure = duplicated / n if n > 0 else 0.0
 
+        avg_val_gap = 0.0
+        if normalized:
+            gaps = [s.val_gap_score for s in normalized if s.val_gap_score != 0.0]
+            if gaps:
+                avg_val_gap = round(sum(gaps) / len(gaps), 4)
+
         return RiskMetrics(
             variance=variance,
             expected_value=ev,
@@ -80,4 +92,5 @@ class RiskEngine:
             correlation_exposure=correlation_exposure,
             selection_count=n,
             avg_odds=avg,
+            avg_val_gap_score=avg_val_gap,
         )

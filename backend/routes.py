@@ -21,6 +21,7 @@ from .services.storage import SupabaseStorageService, MockStorageService
 from .services.ticket_pulse import TicketPulseService, MockTicketPulseService, RiskReport
 from .services.risk_engine import RiskEngine
 from .services.sentiment import SentimentAnalysisService
+from .services.odds_lookup import get_odds_lookup_service
 from .services.supabase_client import get_supabase_client
 from .config import get_settings
 from .batch import BatchConvertRequest, BatchConvertResponse, BatchTicketResult, BatchSummary
@@ -89,6 +90,7 @@ async def convert_ticket(
     storage_service=Depends(get_storage_service),
     pulse_service=Depends(get_pulse_service),
     sentiment_service=Depends(get_sentiment_service),
+    odds_service=Depends(get_odds_lookup_service),
 ):
     settings = get_settings()
     if settings.auth_enabled and api_key != "dev_bypass":
@@ -101,6 +103,10 @@ async def convert_ticket(
         stake=request.stake,
     )
     internal_ticket, _ = parser.parse(sportybet_ticket)
+
+    if odds_service is not None:
+        await odds_service.enrich_val_gap(internal_ticket.selections)
+
     converted = converter.convert(internal_ticket)
 
     pulse_result = None
@@ -108,7 +114,7 @@ async def convert_ticket(
     sentiment_result = None
 
     if request.include_analysis:
-        metrics_result = RiskEngine.compute(converted)
+        metrics_result = RiskEngine.compute(converted, internal_ticket.selections)
         pulse_result, sentiment_result = await asyncio.gather(
             pulse_service.analyse(converted, language=request.language),
             sentiment_service.analyse(converted),
