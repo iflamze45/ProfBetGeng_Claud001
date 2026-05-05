@@ -17,6 +17,7 @@ from .services.sportybet_parser import SportybetAdapter
 from .services.syndicate_service import SyndicateService, MockSyndicateService
 from .services.risk_analytics_service import RiskAnalyticsService, PortfolioRiskMetrics
 from .services.clv_service import CLVService, CLVReport as CLVReportModel
+from .services.value_discovery_service import ValueDiscoveryService, MarketSignal
 from .services.converter import Bet9jaConverter
 from .services.pbg_streaming_protocol import live_odds_manager
 from .services.auth import APIKeyService, MockAPIKeyService, require_api_key
@@ -386,6 +387,7 @@ async def get_arb_windows(_: str = Security(require_api_key)):
 
 _risk_service = RiskAnalyticsService()
 _clv_service = CLVService()
+_discovery_service = ValueDiscoveryService()
 
 
 @router.get("/api/v1/analytics/risk", response_model=PortfolioRiskMetrics)
@@ -412,6 +414,15 @@ async def get_clv(
         closing_odds=closing_odds,
         match_id=match_id,
     )
+
+
+@router.get("/api/v1/signals")
+async def get_signals(
+    limit: int = Query(20, ge=1, le=50),
+    _: str = Depends(require_api_key),
+):
+    signals = _discovery_service.get_signals(limit=limit)
+    return {"signals": [s.model_dump() for s in signals], "count": len(signals)}
 
 
 @router.websocket("/api/v1/ws/odds")

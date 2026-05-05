@@ -101,6 +101,12 @@ export async function getArbWindows({ apiKey }) {
   })
 }
 
+export async function getMarketSignals(apiKey, { limit = 20 } = {}) {
+  return request(`/api/v1/signals?limit=${limit}`, {
+    headers: { 'X-API-Key': apiKey }
+  })
+}
+
 function adminHeaders() {
   const token = import.meta.env.VITE_ADMIN_TOKEN || 'pbg_admin_secret'
   return { 'X-Admin-Token': token }

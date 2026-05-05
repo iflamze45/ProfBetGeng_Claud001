@@ -15,13 +15,12 @@ import {
     Zap,
 } from 'lucide-react';
 import { useApiKey } from '../hooks/useApiKey';
-import { getArbWindows } from '../api/pbgClient';
+import { getArbWindows, getMarketSignals } from '../api/pbgClient';
 
 const stub = () => Promise.reject(new Error('Endpoint not available'));
 const executeInstitutionalTrade = stub;
 const executeRecursiveFeedback = stub;
 const getDarkPoolDepth = stub;
-const getMarketSignals = () => Promise.resolve({ signals: [] });
 const getMindStatus = stub;
 const getRiskProfile = stub;
 const getSgnNodes = () => Promise.resolve([]);
